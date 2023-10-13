@@ -1,7 +1,7 @@
 # TODO
 
 ## Communication par l'I2C
-
+Salut 
 ### Configurer la RaspBerry pi:
 
  - Si la commande  `i2cdetect` existe, elle est sûrement déjà configuré
