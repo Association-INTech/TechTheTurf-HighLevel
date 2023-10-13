@@ -2,6 +2,7 @@
 
 ## Communication par l'I2C
 
+Bleu
 ### Configurer la RaspBerry pi:
 
  - Si la commande  `i2cdetect` existe, elle est sûrement déjà configuré
