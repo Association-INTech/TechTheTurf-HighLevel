@@ -21,6 +21,10 @@ python3 -m pip install smbus2
 ### i2c avec smbus et python
 [documentation](https://pypi.org/project/smbus2/)
 
+principales méthodes à utliser:
+ - SMBus.write_i2c_block_data
+ - SMBus.read_i2c_block_data
+
 #### Objectifs
  - savoir communiquer avec des pico en esclave
  - interface python
