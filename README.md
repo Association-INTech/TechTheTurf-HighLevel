@@ -27,7 +27,7 @@ python3 -m pip install smbus2
 
 
 ## Descriptif des échanges de données
-A déterminer
+A déterminer ([ancien exemple](https://docs.google.com/spreadsheets/d/1NDprMKYs9L7S2TkqgACDOh6OKDJRHhz_LrTCKmEuD-k/edit?usp=sharing))
 
  - taille des trames: fixe, variable
  - contenu des trames
