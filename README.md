@@ -1,7 +1,8 @@
 # TODO
 
 ## Communication par l'I2C
-Salut 
+
+Bleu
 ### Configurer la RaspBerry pi:
 
  - Si la commande  `i2cdetect` existe, elle est sûrement déjà configuré
@@ -20,13 +21,17 @@ python3 -m pip install smbus2
 ### i2c avec smbus et python
 [documentation](https://pypi.org/project/smbus2/)
 
+principales méthodes à utliser:
+ - SMBus.write_i2c_block_data
+ - SMBus.read_i2c_block_data
+
 #### Objectifs
  - savoir communiquer avec des pico en esclave
  - interface python
 
 
 ## Descriptif des échanges de données
-A déterminer
+A déterminer ([ancien exemple](https://docs.google.com/spreadsheets/d/1NDprMKYs9L7S2TkqgACDOh6OKDJRHhz_LrTCKmEuD-k/edit?usp=sharing))
 
  - taille des trames: fixe, variable
  - contenu des trames
