@@ -2,6 +2,8 @@
 
 ## Communication par l'I2C
 
+lien gdocs: https://docs.google.com/spreadsheets/d/11dtBx3tYL44sK2REWkbLKTJWfvl4ePpTwKAwb9weIOo/edit?usp=sharing
+
 Bleu
 ### Configurer la RaspBerry pi:
 
