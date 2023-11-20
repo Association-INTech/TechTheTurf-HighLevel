@@ -40,7 +40,14 @@ class Pami(cmd.Cmd):
         self.obstacle = 1
         self.do_eteint()
 
-    def do_deplace(self,distance:float,angle:float):
+    def do_deplace(self,line):
+        L=[]
+        for i in range(line.length-1):
+            if line[i]==' ':
+                L.append(line[:i])
+                L.append(line[i+1:])
+            angle=float(L[1])
+            distance=float(L[0])
         """fait avancer le pami"""
         if self.allume == 1:
             bus.write_i2c_block_data(i2c_addresse,1,struct.pack('!f',distance)+struct.pack('!f',angle))
