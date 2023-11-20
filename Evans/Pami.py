@@ -115,8 +115,8 @@ class Pami(cmd.Cmd):
 #a>>b => supprime les b derniers bits de a, donc c'est a//(2^b)
 
 
-
+test=Pami()
 
 if __name__=="__main__":
-    Pami().cmdloop()
+    test.cmdloop()
 
