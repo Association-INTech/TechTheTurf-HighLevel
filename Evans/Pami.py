@@ -43,7 +43,7 @@ class Pami(cmd.Cmd):
     def do_deplace(self,line):
         L=[]
         i=0
-        while line[i]==' ':
+        while line[i]!=' ':
             i+=1
         L.append(line[:i])
         L.append(line[i+1:])
