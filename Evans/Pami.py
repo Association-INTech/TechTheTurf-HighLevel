@@ -12,14 +12,15 @@ class Pami(cmd.Cmd):
         self.allume = 1 # Pami inactif
         self.obstacle = 0
         super(Pami, self).__init__()
-        self.pos_r= [0]
-        self.pos_teta=[0]
-        self.kp_teta=0
-        self.ki_teta=0
-        self.kd_teta=0
-        self.kp_rho=0
-        self.ki_rho=0
-        self.kd_rho=0
+        self.pos_x= 0.
+        self.pos_y=0.
+        self.orientation = 0
+        self.kp_teta=0.
+        self.ki_teta=0.
+        self.kd_teta=0.
+        self.kp_rho=0.
+        self.ki_rho=0.
+        self.kd_rho=0.
 
     def do_reveil(self,i=0):
         self.allume = 1 #Pami allumé
@@ -43,8 +44,8 @@ class Pami(cmd.Cmd):
         """fait avancer le pami"""
         if self.allume == 1:
             bus.write_i2c_block_data(i2c_addresse,1,struct.pack('!f',distance)+struct.pack('!f',angle))
+            self.orientation += angle
             print("le Pami tourne de "+str(angle) +"degrés/angle et avance de"+ str(distance))
-
         else:
             print("ne peut pas avancer/tourner, pami est éteint")
 
@@ -58,8 +59,11 @@ class Pami(cmd.Cmd):
     def do_demande_position(self,i=0):
         """demande la position et l'angle teta d'orientation du robot"""
         bus.write_i2c_block_data(i2c_addresse,3,struct.pack('i',0))
-        pos_r=struct.unpack('f',bus.read_i2c_block_data(i2c_addresse,8)[4:])
-        pos_teta=struct.unpack('f',bus.read_i2c_block_data(i2c_addresse,8)[:4])
+        res=bus.read_i2c_block_data(i2c_addresse,3,8)
+        x=struct.unpack('!f',res[4:])
+        y=struct.unpack('!f',res[:4])
+        return (x,y)
+
 
     def do_demande_erreur(self,i=0):
         """demande l'erreur suite à un mouvement"""
@@ -90,7 +94,6 @@ class Pami(cmd.Cmd):
         plt.show()
     def demande_k(self, h=0):
         """envoie une demande et s'attend à recevoir les 3 valeurs: kp,ki et kd"""
-        bus.write_i2c_block_data(i2c_addresse,2,struct.pack('!f',0))
         res=bus.read_i2c_block_data(i2c_addresse,2, 24)#attention les octets sont dans le mauvais ordre, il faut faire '!f' et pas 'f'
 
         kteta_p= struct.unpack('!f',res[:4])#4 premiers octets
@@ -98,7 +101,7 @@ class Pami(cmd.Cmd):
         kteta_i=struct.unpack('!f',res[4:8])
         print("ki_teta = " + str(kteta_i))
         kteta_d= struct.unpack('!f',res[8:12])
-        print("kd_teta = " + str(kteta_i))
+        print("kd_teta = " + str(kteta_d))
 
         krho_d=struct.unpack('!f',res[12:16])
         print("kd_rho = " + str(krho_d))
