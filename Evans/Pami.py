@@ -128,3 +128,5 @@ test=Pami()
 if __name__=="__main__":
     test.cmdloop()
 
+#changer les arguments en "line", cf la commande deplace
+#communiquer: recuperation infos
