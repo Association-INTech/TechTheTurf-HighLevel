@@ -12,7 +12,7 @@ def trad(line,nb):
     k=0
     j=0
     l=[]
-    for i in range(nb):
+    for i in range(nb-1):
         while line[j]!=' ':
             j=j+1
         l.append(line[k:j])
