@@ -7,6 +7,21 @@ import struct
 
 bus=smbus2.SMBus(1)
 i2c_addresse=0 #normalement 0x69
+
+def trad(line,nb):
+    k=0
+    j=0
+    l=[]
+    for i in range(nb):
+        while line[j]!=' ':
+            j=j+1
+        l.append(line[k:j])
+        k=j+1
+        j=j+1
+    l.append(line[j:])
+    return l
+
+
 class Pami(cmd.Cmd):
     def __init__(self):
         self.allume = 1 # Pami inactif
@@ -41,19 +56,14 @@ class Pami(cmd.Cmd):
         self.do_eteint()
 
     def do_deplace(self,line):
-        L=[]
-        i=0
-        while line[i]!=' ':
-            i+=1
-        L.append(line[:i])
-        L.append(line[i+1:])
-        angle=float(L[1])
-        distance=float(L[0])
+        l=trad(line,2)
+        angle=float(l[1])
+        distance=float(l[0])
         """fait avancer le pami"""
         if self.allume == 1:
             bus.write_i2c_block_data(i2c_addresse,1,struct.pack('!f',distance)+struct.pack('!f',angle))
             self.orientation += angle
-            print("le Pami tourne de "+str(angle) +"degrés/angle et avance de"+ str(distance))
+            print("le Pami tourne de "+str(angle) +" radian(s) et avance de "+ str(distance))
         else:
             print("ne peut pas avancer/tourner, pami est éteint")
 
