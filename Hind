@@ -1,0 +1,84 @@
+import cmd
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+import  smbus2 as s
+import struct
+
+class Pami(cmd.Cmd):
+
+#Initialisation des variables#
+    def __init__(self):
+        rot_teta = 0
+        rot_rho = 0
+        kp_tete = 0
+        ki_teta = 0
+        kd_teta = 0
+        kp_rho = 0
+        ki_rho = 0
+        kd_rho = 0
+
+    bus = s.SMBus(1)
+    i2c_adresse = 0x69 #adresse i2c du rasberry
+
+    def do_allumer(self, ligne):
+        bus.write_i2c_block_data(i2c_adresse,0,struct.pack('i',1))
+        print("Le pami s'allume", line)
+
+    def do_eteindre(self, line):
+        bus.write_i2c_block_data(i2c_adresse,0,struct.pack('i',0))
+        print("Le pami s'éteind", line)
+
+    def do_avancer(self, distance):
+        print("Le pami avance", distance)
+        bus.write_i2c_block_data(i2c_adresse,1,struct.pack('f',))
+
+    def do_rotation(self, angle):
+        bus.write_i2c_block_data(i2c_adresse,1,)
+        print("Le pami tourne de " + angle + " degrés")
+
+    def do_demande_asservissement(self,line):
+        bus.write_i2c_block_data(i2c_adresse,2,struct.pack("f",2))
+        trame_asserv = struct.unpack('f',bus.read_i2c_block_data(i2c_adresse,2,24))[0]
+        kteta = trame_asserv>>12*8
+        krho = trame_asserv&(2**(12*8)-1)
+
+        kp_teta = kteta>>3*8
+        ki_teta = (kteta>>2*8)&(2**(4*8)-1)
+        kd_teta = kteta&(2**(3*8)-1)
+        kp_rho = krho>3*8
+        ki_rho = (krho>>2*8)&(2**(4*8)-1)
+        kd_rho = krho&(2**(3*8)-1)
+        print("Demande d'asservissement au BL")
+
+    def do_objet(self,line):
+        detect=0
+        if detect :
+            self.do_eteindre(line)
+            print("Le pami à touché une fleur")
+
+    def do_graph(self,i=0):
+        fig = plt.figure()
+        axis = plt.axes(xlim =(0, 4),
+                        ylim =(-2, 2))
+        # initializing a line variable
+        line, = axis.plot([], [], lw = 3)
+
+        def init():
+            line.set_data([], [])
+            return line,
+
+        def animate(i):
+            x = np.linspace(0, 4, 1000)
+            y = np.sin(2 * np.pi * (x - 0.01 * i))
+            line.set_data(x, y)
+            return line,
+
+        anim = FuncAnimation(fig, animate,
+                             init_func = init,
+                             frames = 200,
+                             interval = 20,
+                             blit = True)
+        plt.show()
+
+Pami().cmdloop()
