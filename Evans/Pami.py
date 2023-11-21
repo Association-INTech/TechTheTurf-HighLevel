@@ -62,7 +62,7 @@ class Pami(cmd.Cmd):
         distance = float(l[0])
         """fait avancer le pami"""
         if self.allume == 1:
-            bus.write_i2c_block_data(i2c_addresse, 1, struct.pack('!f', distance) + struct.pack('!f', angle))
+            bus.write_i2c_block_data(i2c_addresse, 1, struct.pack('f', distance) + struct.pack('f', angle))
             self.orientation += angle
             print("le Pami tourne de " + str(angle) + " radian(s) et avance de " + str(distance))
         else:
@@ -110,6 +110,7 @@ class Pami(cmd.Cmd):
         """envoie une demande et s'attend à recevoir les 3 valeurs: kp,ki et kd"""
         res = bus.read_i2c_block_data(i2c_addresse, 2,
                                       24)  # attention les octets sont dans le mauvais ordre, il faut faire '!f' et pas 'f'
+
 
         self.kp_teta = struct.unpack('!f', res[:4])  # 4 premiers octets
         print("kp_teta = " + str(self.kp_teta))
