@@ -41,8 +41,7 @@ class Pami(cmd.Cmd):
     def do_reveil(self, i=0):
         self.allume = 1  # Pami allumé
         print("le pami est en marche")
-        bus.write_i2c_block_data(i2c_addresse, 0,
-                                 struct.pack('i', 1))  # vérifier qu'on reçoit bien les ytes dans le bon ordre
+        bus.write_i2c_block_data(i2c_addresse, 0, struct.pack('i', 1))  # vérifier qu'on reçoit bien les ytes dans le bon ordre
 
     def do_eteint(self, line=0):
         """éteint le pami, le stoppe et remet ses roues droites"""
