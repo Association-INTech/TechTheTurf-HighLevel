@@ -70,6 +70,7 @@ class CAsync(ControllerInterface):
 
 def async_main():
     controller = CAsync([])
+    loop = asyncio.get_running_loop()
 
     async def display():
         while True:
@@ -77,18 +78,18 @@ def async_main():
                 print(event)
             await asyncio.sleep(0.)
 
-    async def main():
-        await asyncio.gather(
+    tasks = asyncio.gather(
             display(),
             controller.butts.mainloop_asyncio(),
             controller.mouse.mainloop_asyncio()
         )
     try:
-        asyncio.run(main())
+        loop.run_until_complete(tasks)
     except KeyboardInterrupt:
-        controller.butts.running = False
-        controller.mouse.running = False
-        asyncio.get_running_loop().stop()
+        tasks.cancel()
+        loop.run_forever()
+        tasks.exception()
+    loop.close()
 
 
 def process_main():
