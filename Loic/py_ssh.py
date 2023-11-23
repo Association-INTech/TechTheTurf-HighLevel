@@ -51,7 +51,7 @@ def plot():
 
 async def out():
     global grasping_values
-    # f = open('log.txt', 'w')
+    f = open('log.txt', 'w')
     buffer, current_check, float_buffer = b'', start_check, b''
     while process.poll() is None:
         char = await asyncio.to_thread(process.stdout.read, 1)
@@ -70,6 +70,8 @@ async def out():
             float_buffer += char
             if len(float_buffer) >= 4:
                 values[:] = values[-500:] + [struct.unpack('f', float_buffer[:4])[0]]
+                f.write(f'{values[-1]:.02f} {struct.pack(values[-1])}')
+
                 float_buffer = float_buffer[4:]
 
 loop = asyncio.get_event_loop()
