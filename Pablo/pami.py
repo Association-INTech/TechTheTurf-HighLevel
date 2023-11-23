@@ -79,7 +79,7 @@ class Pami(cmd.Cmd):
 
 		theta, dst = map(float,arg.split())
 
-		bus.write_i2c_block_data(self.addr, 1, struct.pack('<ff', distance, angle))
+		bus.write_i2c_block_data(self.addr, 1, struct.pack('<ff', dst, theta))
 		print(f"Déplacement de theta {theta} et rho {dst}")
 
 	def do_gpid(self, arg):
