@@ -126,7 +126,7 @@ class Pami(cmd.Cmd):
 		kp, ki, kd = map(float,arg[1:])
 		self.pids[idx].set(kp, ki, kd)
 
-		res = bus.write_i2c_block_data(self.addr, 2 | (idx << 4), self.pids[idx].to_bytes())
+		res = bus.write_i2c_block_data(self.addr, 5 | (idx << 4), self.pids[idx].to_bytes())
 
 if __name__ == "__main__":
 	pami = Pami(PAMI_I2C_ADDR)
