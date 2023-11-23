@@ -1,6 +1,6 @@
 import subprocess
 import sys
-import time
+import asyncio
 
 cmd = 'ssh hindtechno@192.168.1.9 -t'
 
@@ -8,13 +8,30 @@ process = subprocess.Popen(
     cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
 )
 
-while True:
-    out = process.stdout.read(1)
-    line = process.stderr.readline()
-    if line:
+
+async def err():
+    while process.poll() is None:
+        print('err coince')
+        line = await asyncio.to_thread(process.stderr.readline)
         print("ERR", line)
-    if out == '' and process.poll() != None:
-        break
-    if out != '':
-        sys.stdout.buffer.write(out)
-        sys.stdout.flush()
+
+
+async def out():
+
+    while process.poll() is None:
+        char = await asyncio.to_thread(process.stdout.read, 1)
+        if char:
+            sys.stdout.buffer.write(char)
+            sys.stdout.flush()
+
+loop = asyncio.get_event_loop()
+
+loop.run_until_complete(
+    asyncio.gather(
+        out(),
+        err()
+    )
+)
+
+while process.poll():
+    pass
