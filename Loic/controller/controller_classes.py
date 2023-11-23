@@ -92,7 +92,6 @@ class ControllerMouse(ControllerInterface):
                 # Two's complement on x and y displacements
                 self.queue.append(Event(h & 1, 3, ((dx - 256 if dx > 128 else dx), dy - 256 if dy > 128 else dy)))
 
-
     async def mainloop_asyncio(self):
         with open(self.file, 'rb') as f:
             while self.running:
