@@ -94,9 +94,8 @@ def async_main():
 
         if tasks:
             tasks.cancel()
-            loop.run_forever()
-            tasks.exception()
             loop.close()
+            tasks.exception()
             sys.exit()
     loop.close()
 
