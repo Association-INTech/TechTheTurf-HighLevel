@@ -7,8 +7,7 @@ import smbus2
 import struct
 
 bus = smbus2.SMBus(1)
-PAMI_I2C_ADDR = 0  # normalement 0x69
-
+PAMI_I2C_ADDR = 0x69  # normalement 0x69
 
 @dataclass
 class Pid:
@@ -33,15 +32,17 @@ class Pid:
 		return f"Pid(name={self.name}, kp={self.kp}, ki={self.ki}, kd={self.kd})"
 
 def write_i2c(bus, addr, reg, data):
-	write = smbus2.i2c_msg.write(addr, struct.pack("<B", reg) + data)
-	bus.i2c_rdwr(write)
+	#write = smbus2.i2c_msg.write(addr, struct.pack("<B", reg) + data)
+	#bus.i2c_rdwr(write)
+	bus.write_i2c_block_data(addr, reg, data)
 
 def read_i2c(bus, addr, reg, size):
-	write = smbus2.i2c_msg.write(addr, struct.pack("<B", reg))
-	bus.i2c_rdwr(write)
-	read = smbus2.i2c_msg.read(addr, size)
-	bus.i2c_rdwr(read)
-	return bytes(read)
+	return bytes(bus.read_i2c_block_data(addr, reg, size))
+	#write = smbus2.i2c_msg.write(addr, struct.pack("<B", reg))
+	#bus.i2c_rdwr(write)
+	#read = smbus2.i2c_msg.read(addr, size)
+	#bus.i2c_rdwr(read)
+	#return bytes(read)
 
 class Pami(cmd.Cmd):
 	def __init__(self, addr):
@@ -68,14 +69,14 @@ class Pami(cmd.Cmd):
 	def do_exit(self, arg):
 		"""stoppe le moteur, eteint le pami et ferme le terminal"""
 		print("Ciao")
-		self.do_eteint()
+		self.do_off(arg)
 		return True
 
 	def do_pos(self, arg):
 		"""demande la position et l'angle teta d'orientation du robot"""
 		res = read_i2c(bus, self.addr, 3, 2*4)
-		x,y = struct.unpack("<ff", res)
-		print(f"x: {x}, y:{y}")
+		theta,dst = struct.unpack("<ff", res)
+		print(f"theta: {theta}, dst:{dst}")
 
 	def do_move(self, arg):
 		"""Déplacement de theta + distance"""
