@@ -44,7 +44,6 @@ def plot():
                 time.sleep(.02)
                 return curve,
 
-
             ani = FuncAnimation(fig, animate, cache_frame_data=False, blit=True)
             plt.show()
 
@@ -70,7 +69,7 @@ async def out():
             float_buffer += char
             if len(float_buffer) >= 4:
                 values[:] = values[-500:] + [struct.unpack('f', float_buffer[:4])[0]]
-                f.write(f'{values[-1]:.02f} {struct.pack(values[-1])}')
+                f.write(f'{values[-1]:.04f} {struct.pack("f", values[-1])} {list(float_buffer[:4])}\n')
 
                 float_buffer = float_buffer[4:]
 
