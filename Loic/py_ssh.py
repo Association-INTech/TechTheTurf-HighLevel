@@ -10,6 +10,9 @@ process = subprocess.Popen(
 
 while True:
     out = process.stdout.read(1)
+    line = process.stderr.readline()
+    if line:
+        print("ERR", line)
     if out == '' and process.poll() != None:
         break
     if out != '':
