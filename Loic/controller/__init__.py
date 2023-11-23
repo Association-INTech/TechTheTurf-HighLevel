@@ -1,6 +1,7 @@
 from multiprocessing import Process, SimpleQueue
 from threading import Thread
 import asyncio
+import sys
 
 from controller_classes import ControllerButtons, ControllerMouse, PROCESS, THREAD, ASYNCIO
 
@@ -86,10 +87,7 @@ def async_main():
     try:
         loop.run_until_complete(tasks)
     except KeyboardInterrupt:
-        tasks.cancel()
-        loop.run_forever()
-        tasks.exception()
-    loop.close()
+        sys.exit()
 
 
 def process_main():
@@ -115,6 +113,5 @@ def thread_main():
 
 
 if __name__ == '__main__':
-    import sys
     mode = sys.argv[1]
     {'asyncio': async_main, 'thread': thread_main, 'process': process_main}[mode]()
