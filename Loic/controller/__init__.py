@@ -88,6 +88,7 @@ def async_main():
     except KeyboardInterrupt:
         controller.butts.running = False
         controller.mouse.running = False
+        asyncio.get_running_loop().stop()
 
 
 def process_main():
