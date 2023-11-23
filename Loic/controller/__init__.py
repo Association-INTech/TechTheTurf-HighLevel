@@ -82,7 +82,8 @@ def async_main():
     tasks = asyncio.gather(
             display(),
             controller.butts.mainloop_asyncio(),
-            controller.mouse.mainloop_asyncio()
+            controller.mouse.mainloop_asyncio(),
+            return_exceptions=True
         )
     try:
         loop.run_until_complete(tasks)
@@ -98,6 +99,7 @@ def async_main():
             loop.close()
             sys.exit()
     loop.close()
+
 
 def process_main():
     controller = CProcess(SimpleQueue())
