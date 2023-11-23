@@ -106,24 +106,23 @@ class Pami(cmd.Cmd):
 
         plt.show()
 
-    def demande_k(self, line=0):
+    def do_demande_k(self, line=0):
         """envoie une demande et s'attend à recevoir les 3 valeurs: kp,ki et kd"""
-        res = bus.read_i2c_block_data(i2c_addresse, 2,
-                                      24)  # attention les octets sont dans le mauvais ordre, il faut faire '!f' et pas 'f'
-
-
-        self.kp_teta = struct.unpack('!f', res[:4])  # 4 premiers octets
+        res = bus.read_i2c_block_data(i2c_addresse, 2, 24)
+        kteta= struct.unpack('<fff', res[:12])
+        self.kp_teta = kteta[0]
         print("kp_teta = " + str(self.kp_teta))
-        self.ki_teta = struct.unpack('!f', res[4:8])
+        self.ki_teta = kteta[1]
         print("ki_teta = " + str(self.ki_teta))
-        self.kd_teta = struct.unpack('!f', res[8:12])
+        self.kd_teta = kteta[2]
         print("kd_teta = " + str(self.kd_teta))
 
-        self.kd_rho = struct.unpack('!f', res[12:16])
+        krho= struct.unpack('<fff', res[12:])
+        self.kd_rho = krho[0]
         print("kd_rho = " + str(self.kd_rho))
-        self.ki_rho = struct.unpack('!f', res[16:20])
+        self.ki_rho = krho[1]
         print("ki_rho = " + str(self.ki_rho))
-        self.kp_rho = struct.unpack('!f', res[20:])
+        self.kp_rho = krho[2]
         print("kd_rho = " + str(self.kd_rho))
 
 
