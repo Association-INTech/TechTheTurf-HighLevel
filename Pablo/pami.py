@@ -69,7 +69,7 @@ class Pami(cmd.Cmd):
 	def do_exit(self, arg):
 		"""stoppe le moteur, eteint le pami et ferme le terminal"""
 		print("Ciao")
-		self.do_eteint()
+		self.do_off()
 		return True
 
 	def do_pos(self, arg):
