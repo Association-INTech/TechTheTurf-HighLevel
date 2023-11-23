@@ -70,7 +70,7 @@ class CAsync(ControllerInterface):
 
 def async_main():
     controller = CAsync([])
-    loop = asyncio.get_running_loop()
+    loop = asyncio.get_event_loop()
 
     async def display():
         while True:
