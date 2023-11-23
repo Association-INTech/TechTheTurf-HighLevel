@@ -108,7 +108,7 @@ class Pami(cmd.Cmd):
 
     def do_demande_k(self, line=0):
         """envoie une demande et s'attend à recevoir les 3 valeurs: kp,ki et kd"""
-        res = bus.read_i2c_block_data(i2c_addresse, 2, 24)  # attention les octets sont dans le mauvais ordre, il faut faire '!f' et pas 'f'
+        res = bus.read_i2c_block_data(i2c_addresse, 2, 24)
         self.kp_teta = struct.unpack('!f', res[:4])  # 4 premiers octets
         print("kp_teta = " + str(self.kp_teta))
         self.ki_teta = struct.unpack('!f', res[4:8])
