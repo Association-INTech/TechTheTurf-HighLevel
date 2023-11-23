@@ -75,8 +75,8 @@ class Pami(cmd.Cmd):
 	def do_pos(self, arg):
 		"""demande la position et l'angle teta d'orientation du robot"""
 		res = read_i2c(bus, self.addr, 3, 2*4)
-		x,y = struct.unpack("<ff", res)
-		print(f"x: {x}, y:{y}")
+		theta,dst = struct.unpack("<ff", res)
+		print(f"theta: {theta}, dst:{dst}")
 
 	def do_move(self, arg):
 		"""Déplacement de theta + distance"""
