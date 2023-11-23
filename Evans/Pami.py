@@ -106,7 +106,7 @@ class Pami(cmd.Cmd):
 
         plt.show()
 
-    def demande_k(self, line=0):
+    def do_demande_k(self, line=0):
         """envoie une demande et s'attend à recevoir les 3 valeurs: kp,ki et kd"""
         res = bus.read_i2c_block_data(i2c_addresse, 2,
                                       24)  # attention les octets sont dans le mauvais ordre, il faut faire '!f' et pas 'f'
