@@ -83,7 +83,7 @@ def async_main():
             display(),
             controller.butts.mainloop_asyncio(),
             controller.mouse.mainloop_asyncio(),
-            return_exceptions=True
+            # return_exceptions=True
         )
     try:
         loop.run_until_complete(tasks)
