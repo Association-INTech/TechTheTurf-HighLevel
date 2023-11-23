@@ -91,12 +91,7 @@ def async_main():
         print('HEY')
         controller.butts.running = False
         controller.mouse.running = False
-
-        if tasks:
-            tasks.cancel()
-            loop.close()
-            tasks.exception()
-            sys.exit()
+        sys.exit(1)
     loop.close()
 
 
