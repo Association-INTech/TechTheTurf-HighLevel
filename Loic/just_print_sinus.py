@@ -7,8 +7,9 @@ import sys
 duration, date = float(sys.argv[1]), time.time()
 
 while time.time() - date < duration:
-    print('\r', time.time() - date, end='')
+    print('\r', f'{time.time() - date:.04f}', end='')
     # sys.stdout.buffer.write(struct.pack('f', math.sin(time.perf_counter() / 1e6)))
     # sys.stdout.flush()
+    time.sleep(.003)
 
 print()
