@@ -4,7 +4,7 @@ import struct
 import sys
 
 
-sys.stderr.write('i am sending floating point values\n')
+sys.stout.write('i am sending floating point values\n')
 time.sleep(.5)
 duration, date = float(sys.argv[1]), time.time()
 
@@ -14,6 +14,5 @@ while time.time() - date < duration:
     sys.stdout.flush()
     time.sleep(.03)
 
-sys.stderr.write('i stopped sending floating point values\n')
-
+sys.stdout.write('i stopped sending floating point values\n')
 print()
