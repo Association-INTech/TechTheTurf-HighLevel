@@ -74,7 +74,7 @@ def async_main():
     loop = asyncio.get_event_loop()
 
     async def display():
-        while True:
+        while controller.mouse.running or controller.butts.running:
             for event in controller.get_events():
                 print(event)
             await asyncio.sleep(0.)
@@ -87,6 +87,9 @@ def async_main():
     try:
         loop.run_until_complete(tasks)
     except KeyboardInterrupt:
+        controller.butts.running = False
+        controller.mouse.running = False
+
         if tasks:
             tasks.cancel()
             loop.run_forever()
