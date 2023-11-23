@@ -87,8 +87,13 @@ def async_main():
     try:
         loop.run_until_complete(tasks)
     except KeyboardInterrupt:
-        sys.exit()
-
+        if tasks:
+            tasks.cancel()
+            loop.run_forever()
+            tasks.exception()
+            loop.close()
+            sys.exit()
+    loop.close()
 
 def process_main():
     controller = CProcess(SimpleQueue())
