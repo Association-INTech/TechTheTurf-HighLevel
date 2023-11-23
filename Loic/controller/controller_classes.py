@@ -44,28 +44,18 @@ class ControllerButtons(ControllerInterface):
             print('Controller Disconnected')
 
     async def mainloop_asyncio(self):
-        try:
-            with open(self.file, 'rb') as f:
-                while self.running:
-                    self.queue.append(Event(*struct.unpack(
-                        self.event_format, (await self.read_asyncio(f))
-                    )[:2:-1]))
-        except KeyboardInterrupt:
-            print('Terminated Controller Process')
-        except OSError:
-            print('Controller Disconnected')
+        with open(self.file, 'rb') as f:
+            while self.running:
+                self.queue.append(Event(*struct.unpack(
+                    self.event_format, (await self.read_asyncio(f))
+                )[:2:-1]))
 
     def mainloop_thread(self):
-        try:
-            with open(self.file, 'rb') as f:
-                while self.running:
-                    self.queue.append(Event(*struct.unpack(
-                        self.event_format, self.read_process_thread(f)
-                    )[:2:-1]))
-        except KeyboardInterrupt:
-            print('Terminated Controller Process')
-        except OSError:
-            print('Controller Disconnected')
+        with open(self.file, 'rb') as f:
+            while self.running:
+                self.queue.append(Event(*struct.unpack(
+                    self.event_format, self.read_process_thread(f)
+                )[:2:-1]))
 
 
 class ControllerMouse(ControllerInterface):
@@ -92,33 +82,24 @@ class ControllerMouse(ControllerInterface):
             print('Controller Disconnected')
 
     def mainloop_thread(self):
-        try:
-            with open(self.file, 'rb') as f:
-                while self.running:
-                    # will block, that's why i use processes
-                    h, dx, dy = self.read_process_thread(f)
-                    if (h & 1) ^ self.pad_state:
-                        self.pad_state = h & 1
-                        self.queue.append(Event(h & 1, 3, None))
-                    # Two's complement on x and y displacements
-                    self.queue.append(Event(h & 1, 3, ((dx - 256 if dx > 128 else dx), dy - 256 if dy > 128 else dy)))
-        except KeyboardInterrupt:
-            print('Terminated Mouse Process')
-        except OSError:
-            print('Controller Disconnected')
+        with open(self.file, 'rb') as f:
+            while self.running:
+                # will block, that's why i use processes
+                h, dx, dy = self.read_process_thread(f)
+                if (h & 1) ^ self.pad_state:
+                    self.pad_state = h & 1
+                    self.queue.append(Event(h & 1, 3, None))
+                # Two's complement on x and y displacements
+                self.queue.append(Event(h & 1, 3, ((dx - 256 if dx > 128 else dx), dy - 256 if dy > 128 else dy)))
+
 
     async def mainloop_asyncio(self):
-        try:
-            with open(self.file, 'rb') as f:
-                while self.running:
-                    # will block, that's why i use processes
-                    h, dx, dy = await self.read_asyncio(f)
-                    if (h & 1) ^ self.pad_state:
-                        self.pad_state = h & 1
-                        self.queue.append(Event(h & 1, 3, None))
-                    # Two's complement on x and y displacements
-                    self.queue.append(Event(h & 1, 3, ((dx - 256 if dx > 128 else dx), dy - 256 if dy > 128 else dy)))
-        except KeyboardInterrupt:
-            print('Terminated Mouse Process')
-        except OSError:
-            print('Controller Disconnected')
+        with open(self.file, 'rb') as f:
+            while self.running:
+                # will block, that's why i use processes
+                h, dx, dy = await self.read_asyncio(f)
+                if (h & 1) ^ self.pad_state:
+                    self.pad_state = h & 1
+                    self.queue.append(Event(h & 1, 3, None))
+                # Two's complement on x and y displacements
+                self.queue.append(Event(h & 1, 3, ((dx - 256 if dx > 128 else dx), dy - 256 if dy > 128 else dy)))
