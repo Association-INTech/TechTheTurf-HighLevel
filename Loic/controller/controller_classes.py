@@ -37,7 +37,7 @@ class ControllerButtons(ControllerInterface):
             with open(self.file, 'rb') as f:
                 while True:
                     # read will block, that's why i use processes
-                    self.queue.put(Event(*struct.unpack(self.event_format, self.read_process_thread(f)[:2:-1])))
+                    self.queue.put(Event(*struct.unpack(self.event_format, self.read_process_thread(f))[:2:-1]))
         except KeyboardInterrupt:
             print('Terminated Controller Process')
         except OSError:
@@ -48,8 +48,8 @@ class ControllerButtons(ControllerInterface):
             with open(self.file, 'rb') as f:
                 while self.running:
                     self.queue.append(Event(*struct.unpack(
-                        self.event_format, (await self.read_asyncio(f))[:2:-1]
-                    )))
+                        self.event_format, (await self.read_asyncio(f))
+                    )[:2:-1]))
         except KeyboardInterrupt:
             print('Terminated Controller Process')
         except OSError:
@@ -60,8 +60,8 @@ class ControllerButtons(ControllerInterface):
             with open(self.file, 'rb') as f:
                 while self.running:
                     self.queue.append(Event(*struct.unpack(
-                        self.event_format, self.read_process_thread(f)[:2:-1]
-                    )))
+                        self.event_format, self.read_process_thread(f)
+                    )[:2:-1]))
         except KeyboardInterrupt:
             print('Terminated Controller Process')
         except OSError:
