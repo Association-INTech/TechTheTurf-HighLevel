@@ -87,6 +87,7 @@ def async_main():
     try:
         loop.run_until_complete(tasks)
     except KeyboardInterrupt:
+        print('HEY')
         controller.butts.running = False
         controller.mouse.running = False
 
