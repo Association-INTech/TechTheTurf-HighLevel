@@ -8,8 +8,8 @@ import threading
 import numpy as np
 import time
 
-# cmd = 'ssh hindtechno@192.168.1.9 -t'
-cmd = 'python just_print_sinus.py 10.'
+cmd = 'ssh hindtechno@192.168.1.9 -t'
+# cmd = 'python just_print_sinus.py 10.'
 
 process = subprocess.Popen(
     cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False
