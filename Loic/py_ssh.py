@@ -36,6 +36,7 @@ def plot():
             continue
         while grasping_values and process.poll() is None:
             fig, ax = plt.subplots()
+            ax.set_ylim([-1., 1.])
             curve, = ax.plot((), ())
             ax.plot(np.linspace(0, 10., 100), 1 - np.exp(-np.linspace(0, 10., 100)))
 
