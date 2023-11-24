@@ -16,6 +16,7 @@ while time.time() - date < duration:
     f.write(f'{val:.03f} {struct.pack("f", val)} {list(struct.pack("f", val))}\n')
     sys.stdout.buffer.write(struct.pack('f', val))
     time.sleep(.3)
+    sys.stdout.flush()
 
 sys.stdout.write('i stopped sending floating point values\n')
 print()
