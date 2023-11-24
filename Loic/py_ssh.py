@@ -8,10 +8,11 @@ import threading
 import numpy as np
 import time
 
-cmd = 'ssh hindtechno@192.168.1.9 -t'
+# cmd = 'ssh hindtechno@192.168.1.9 -t'
+cmd = 'python just_print_sinus.py 10.'
 
 process = subprocess.Popen(
-    cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False
 )
 
 
@@ -21,8 +22,8 @@ async def err():
         print("ERR", line)
 
 
-start_check = 'i am sending floating point values\r\n'.encode()
-end_check = 'i stopped sending floating point values\r\n'.encode()
+start_check = b'i am sending floating point values\n'
+end_check = b'i stopped sending floating point values\n'
 checkers = start_check, end_check
 
 
@@ -51,17 +52,19 @@ def plot():
 
 async def out():
     global grasping_values
-    f = open('log.txt', 'w')
+    # f_total = open('log_buffer.txt', 'w')
+    # f = open('log_client.txt', 'w')
     buffer, current_check, float_buffer = b'', start_check, b''
     while process.poll() is None:
         char = await asyncio.to_thread(process.stdout.read, 1)
         if not char:
             continue
         buffer = (buffer + char)[-len(current_check):]
-        # f.write(str(buffer) + '\n')
+        # f_total.write(str(buffer) + '\n')
         if buffer == current_check:
             grasping_values = not grasping_values
             current_check, values[:], float_buffer = checkers[grasping_values], [], b''
+            continue
         if not grasping_values:
             sys.stdout.buffer.write(char)
             sys.stdout.flush()
@@ -70,8 +73,7 @@ async def out():
             float_buffer += char
             if len(float_buffer) >= 4:
                 values[:] = values[-500:] + [struct.unpack('f', float_buffer[:4])[0]]
-                f.write(f'{values[-1]:.04f} {struct.pack("f", values[-1])} {list(float_buffer[:4])}\n')
-
+                # f.write(f'{values[-1]:.04f} {struct.pack("f", values[-1])} {list(float_buffer[:4])}\n')
                 float_buffer = float_buffer[4:]
 
 loop = asyncio.get_event_loop()

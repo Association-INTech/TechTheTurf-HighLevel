@@ -5,18 +5,21 @@ import sys
 
 
 duration = float(sys.argv[1])
-sys.stdout.write('i am sending floating point values\n')
+sys.stdout.buffer.write(b'i am sending floating point values\n')
+sys.stdout.flush()
 time.sleep(.5)
 date = time.time()
 
-f = open('log.txt', 'w')
+f = open('log_server.txt', 'w')
 while time.time() - date < duration:
     # print('\r', f'{time.time() - date:.04f}', end='')
     val = math.sin(time.perf_counter())
     f.write(f'{val:.03f} {struct.pack("f", val)} {list(struct.pack("f", val))}\n')
     sys.stdout.buffer.write(struct.pack('f', val))
-    time.sleep(.3)
+    time.sleep(.03)
     sys.stdout.flush()
 
-sys.stdout.write('i stopped sending floating point values\n')
+
+sys.stdout.buffer.write(b'i stopped sending floating point values\n')
+sys.stdout.flush()
 print()
