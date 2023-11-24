@@ -5,7 +5,7 @@ import sys
 
 
 duration = float(sys.argv[1])
-sys.stdout.buffer.write(b'i am sending floating point values\n')
+sys.stdout.buffer.write(b'i am sending floating point values')
 sys.stdout.flush()
 time.sleep(.5)
 date = time.time()
@@ -20,6 +20,6 @@ while time.time() - date < duration:
     sys.stdout.flush()
 
 
-sys.stdout.buffer.write(b'i stopped sending floating point values\n')
+sys.stdout.buffer.write(b'i stopped sending floating point values')
 sys.stdout.flush()
 print()

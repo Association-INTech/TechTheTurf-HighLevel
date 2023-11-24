@@ -22,8 +22,8 @@ async def err():
         print("ERR", line)
 
 
-start_check = b'i am sending floating point values\n'
-end_check = b'i stopped sending floating point values\n'
+start_check = b'i am sending floating point values'
+end_check = b'i stopped sending floating point values'
 checkers = start_check, end_check
 
 
