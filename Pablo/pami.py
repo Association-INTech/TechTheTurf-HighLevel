@@ -1,7 +1,6 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from dataclasses import dataclass
-from matplotlib.animation import FuncAnimation
+import math
 import cmd
 import smbus2
 import struct
@@ -60,27 +59,27 @@ class Pami(cmd.Cmd):
 		print("Pami - ON")
 
 	def do_off(self, arg):
-		"""éteint le pami, le stoppe et remet ses roues droites"""
+		"""Stop le pami"""
 		write_i2c(bus, self.addr, 0, struct.pack('<B', 0))
 
 		self.started = False
 		print("Pami - OFF")
 
 	def do_exit(self, arg):
-		"""stoppe le moteur, eteint le pami et ferme le terminal"""
+		"""Eteint le Pami & quitte"""
 		print("Ciao")
 		self.do_off(arg)
 		return True
 
 	def do_pos(self, arg):
-		"""demande la position et l'angle teta d'orientation du robot"""
+		"""Returns the position of the Pami"""
 		res = read_i2c(bus, self.addr, 3, 2*4)
 		theta,dst = struct.unpack("<ff", res)
-		print(f"theta: {theta}, dst:{dst}")
+		print(f"theta: {theta}rad, dst:{dst}")
 
 	def do_move(self, arg):
-		"""Déplacement de theta + distance"""
-		if not arg:
+		"""move (theta) (dst)"""
+		if not arg or len(arg.split()) != 2:
 			print("Pas de theta et distance")
 			return
 
@@ -90,11 +89,13 @@ class Pami(cmd.Cmd):
 
 		theta, dst = map(float,arg.split())
 
+		theta = math.radians(theta)
+
 		write_i2c(bus, self.addr, 1, struct.pack('<ff', dst, theta))
-		print(f"Déplacement de theta {theta} et rho {dst}")
+		print(f"Déplacement de theta {theta}rad et rho {dst}")
 
 	def do_gpid(self, arg):
-		"""Demandes les valeurs du PID spécifié"""
+		"""gpid (id/nom pid)"""
 		if not arg:
 			print("Pas de numéro/nom de pid")
 			return
@@ -116,7 +117,7 @@ class Pami(cmd.Cmd):
 		print(self.pids[idx])
 
 	def do_spid(self, arg):
-		"""Change les valeurs du PID spécifié"""
+		"""spid (id/nom pid) (kp) (ki) (kd)"""
 		arg = arg.split()
 		if not arg or len(arg) < 4:
 			print("Pas de numéro/nom de pid et valeurs")
