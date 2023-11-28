@@ -74,7 +74,7 @@ class Pami(cmd.Cmd):
 	def do_pos(self, arg):
 		"""Returns the position of the Pami"""
 		res = read_i2c(bus, self.addr, 3, 2*4)
-		theta,dst = struct.unpack("<ff", res)
+		dst,theta = struct.unpack("<ff", res)
 		print(f"theta: {theta}rad, dst:{dst}")
 
 	def do_move(self, arg):
