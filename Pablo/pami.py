@@ -22,7 +22,7 @@ class Pid:
 
 	def from_bytes(self, bys):
 		kp, ki, kd = struct.unpack("<fff", bys)
-		self.set(kp, ki, kp)
+		self.set(kp, ki, kd)
 
 	def to_bytes(self):
 		return struct.pack("<fff", self.kp, self.ki, self.kd)
@@ -139,6 +139,53 @@ class Pami(cmd.Cmd):
 		self.pids[idx].set(kp, ki, kd)
 		print(self.pids[idx])
 		write_i2c(bus, self.addr, 5 | (idx << 4), self.pids[idx].to_bytes())
+
+	def do_stelem(self, arg):
+		"""stelem (id) on/off """
+		arg = arg.strip().lower().split()
+		if len(arg) < 2:
+			print("Pas bon argument")
+			return
+		if arg[1] == "on":
+			arg[1] = True
+		elif arg[1] == "off":
+			arg[1] = False
+		else:
+			try:
+				arg[1] = bool(arg[1])
+			except:
+				print("Pas bon argument")
+				return
+		try:
+			arg[0] = int(arg[0])
+		except:
+			print("Pas bon argument")
+			return
+
+		idx, state = arg
+		write_i2c(bus, self.addr, 6 | (idx << 4), struct.pack("<B",state))
+
+	def telem_get_info(self, idx):
+		ret = read_i2c(bus, self.addr, 8 | (idx << 4), 4*2)
+		return struct.unpack("<II", ret)
+
+	def telem_get(self, idx, size):
+		ret = read_i2c(bus, self.addr, 7 | (idx << 4), size)
+		return struct.unpack("<Iffff", ret)
+
+	def do_telem(self, arg):
+		"""telem (id)"""
+		try:
+			idx = int(arg)
+		except:
+			print("Pas bon argument")
+			return
+
+		rem, size = self.telem_get_info(idx)
+		print(rem, size)
+		while rem != 0:
+			#print(ts, cons, inp, out)
+			rem, ts, cons, inp, out = self.telem_get(idx, size)
 
 if __name__ == "__main__":
 	pami = Pami(PAMI_I2C_ADDR)
