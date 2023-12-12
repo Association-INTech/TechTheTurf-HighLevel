@@ -3,6 +3,7 @@ import math
 import cmd
 import smbus2
 import robot
+import telemetry
 
 PAMI_I2C_ADDR = 0x69
 
@@ -58,6 +59,16 @@ class Commander(cmd.Cmd):
 
 		print(f"Déplacement de theta {theta}rad et rho {dst}")
 		self.asserv.move(dst, theta)
+
+	def do_pids(self, arg):
+		"""list all pids"""
+		for pid in self.asserv.pids.values():
+			print(pid)
+
+	def do_telems(self, arg):
+		"""list all telemetry"""
+		for telem in self.asserv.telems.values():
+			print(telem)
 
 	def do_gpid(self, arg):
 		"""gpid (id/nom pid)"""

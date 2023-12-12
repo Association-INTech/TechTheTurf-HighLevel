@@ -1,7 +1,13 @@
 import numpy as np
 from dataclasses import dataclass
-import smbus2
+try:
+	import smbus2
+	SMBBUS_PRESENT = True
+except:
+	print("No SMBUS")
+	SMBBUS_PRESENT = False
 import struct
+import telemetry
 
 ENDIANNESS = "<"
 
@@ -20,89 +26,43 @@ class Pid:
 		return self
 
 	def from_bytes(self, bys):
-		kp, ki, kd = struct.unpack(ENDIANNESS+"fff", bys)
+		kp, ki, kd = struct.unpack(ENDIANNESS + "fff", bys)
 		self.set(kp, ki, kd)
 		return self
 
 	def to_bytes(self):
-		return struct.pack(ENDIANNESS+"fff", self.kp, self.ki, self.kd)
-
-@dataclass
-class TelemetryPacketBase:
-	timestamp: float
-
-	def fmt():
-		return ENDIANNESS+"f"
-
-@dataclass
-class PidTelemetryPacket(TelemetryPacketBase):
-	target: float
-	input: float
-	output: float
-
-	def fmt():
-		return "fff"
-
-@dataclass
-class Telemetry:
-	name: str
-	idx: int
-	packet_type: TelemetryPacketBase
-	fmt: str = ""
-	size: int = 0
-
-	def __init__(self, name, idx, packet_base):
-		self.name = name
-		self.idx = idx
-		self.packet_type = packet_base
-		self.fmt = Telemetry.get_format(packet_base)
-		self.size = struct.calcsize(self.fmt)
-
-	def get_format(ty):
-		if not "fmt" in ty.__dict__:
-			return None
-		st = ""
-		for base in ty.__bases__:
-			if not "fmt" in base.__dict__:
-				continue
-			st += Telemetry.get_format(base)
-		return st + ty.fmt()
-
-	def to_packet(self, data):
-		return self.packet_type(*struct.unpack(self.fmt,data))
+		return struct.pack(ENDIANNESS + "fff", self.kp, self.ki, self.kd)
 
 # Base class with I2C comm helpers
 
 class I2CBase:
-	def __init__(self, bus, addr):
+	def __init__(self, bus=None, addr=None):
 		self.bus = bus
 		self.addr = addr
+		self.i2cSimulate = bus is None or not SMBBUS_PRESENT
 
 	def write(self, reg, data):
+		if self.i2cSimulate:
+			return
 		self.bus.write_i2c_block_data(self.addr, reg, data)
-		#write = smbus2.i2c_msg.write(addr, struct.pack("<B", reg) + data)
-		#bus.i2c_rdwr(write)
 
 	def read(self, reg, size):
+		if self.i2cSimulate:
+			return b"\x00"*size
 		return bytes(self.bus.read_i2c_block_data(self.addr, reg, size))
-		#write = smbus2.i2c_msg.write(addr, struct.pack("<B", reg))
-		#bus.i2c_rdwr(write)
-		#read = smbus2.i2c_msg.read(addr, size)
-		#bus.i2c_rdwr(read)
-		#return bytes(read)
 
 	def write_struct(self, reg, fmt, *data):
-		self.write(reg, struct.pack(ENDIANNESS+fmt, *data))
+		self.write(reg, struct.pack(ENDIANNESS + fmt, *data))
 
 	def read_struct(self, reg, fmt):
 		ret = self.read(reg, struct.calcsize(fmt))
-		return struct.unpack(ENDIANNESS+fmt, ret)
+		return struct.unpack(ENDIANNESS + fmt, ret)
 
 
 # Actual classes for robot functions
 
 class Asserv(I2CBase):
-	def __init__(self, bus, addr):
+	def __init__(self, bus=None, addr=None):
 		super().__init__(bus, addr)
 
 		self.last_pos = (0,0) # rho, theta
@@ -113,7 +73,7 @@ class Asserv(I2CBase):
 			self.get_pid(pid)
 			idx = pid.idx
 			self.pids[idx] = pid
-			self.telems[idx] = Telemetry(f"pid_{pid.name}", idx, PidTelemetryPacket)
+			self.telems[idx] = telemetry.Telemetry(f"pid_{pid.name}", idx, telemetry.PidTelemetryPacket)
 
 		for telem in self.telems.values():
 			self.set_telem(telem, False)
@@ -175,25 +135,5 @@ class Asserv(I2CBase):
 		ret = self.read(2 | (pid.idx << 4), 4*3)
 		return pid.from_bytes(ret)
 
-	def get_telem_info(self, telem):
-		return self.read_struct(8 | (telem.idx << 4), "II")
-
-	def fetch_telem_single(self, telem):
-		dat = self.read(7 | (telem.idx << 4), 4+telem.size)
-		rem, = struct.unpack(ENDIANNESS+"I", dat[:4])
-		return rem, telem.to_packet(dat[4:])
-
-	def fetch_telem(self, telem, check_avail=True):
-		if check_avail:
-			rem,_ = self.get_telem_info(telem)
-		else:
-			rem = 1
-
-		packets = []
-
-		while rem > 0:
-			rem, dat = self.fetch_telem_single(telem)
-			packets.append(dat)
-			print(rem, dat)
-
-		return packets
+	def ready_for_order(self):
+		return self.read_struct(10, "B") == 1
