@@ -2,6 +2,7 @@ import numpy as np
 import math
 import cmd
 import smbus2
+import time
 import robot
 import telemetry
 
@@ -42,7 +43,7 @@ class Commander(cmd.Cmd):
 	def do_pos(self, arg):
 		"""Returns the position of the Pami"""
 		dst,theta = self.asserv.get_pos()
-		print(f"theta: {theta}rad, dst:{dst}")
+		print(f"theta: {math.degrees(theta):.2f}° dst: {dst:.2f}mm")
 
 	def do_move(self, arg):
 		"""move (theta) (dst)"""
@@ -128,6 +129,11 @@ class Commander(cmd.Cmd):
 				print("Pas bon argument")
 				return
 
+		if arg[0] == "all":
+			for telem in self.asserv.telems.values():
+				self.asserv.set_telem(telem, arg[1])
+			return
+
 		try:
 			idx = int(arg[0])
 			telem = self.asserv.telem_from_idx(idx)
@@ -140,19 +146,28 @@ class Commander(cmd.Cmd):
 
 		self.asserv.set_telem(telem, arg[1])
 
-	def do_telem(self, arg):
-		"""telem (id)"""
-		try:
-			idx = int(arg[0])
-			telem = self.asserv.telem_from_idx(idx)
-		except:
-			telem = self.asserv.telem_from_name(idx)
+	def do_ready(self, arg):
+		val = self.asserv.ready_for_order()
+		if val:
+			print("Ready")
+		else:
+			print("Not Ready")
 
-		if not telem:
+	def do_sq(self, arg):
+		try:
+			side_len = int(arg)
+		except:
 			print("Pas bon argument")
 			return
 
-		self.asserv.fetch_telem(telem)
+		self.asserv.wait_completed()
+		for i in range(4):
+			print(i)
+			self.asserv.move(side_len, 0)
+			time.sleep(2)
+			self.asserv.move(0, math.radians(90))
+			time.sleep(2)
+			self.asserv.wait_completed()
 
 if __name__ == "__main__":
 	bus = smbus2.SMBus(1)
