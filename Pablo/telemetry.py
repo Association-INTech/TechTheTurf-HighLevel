@@ -130,8 +130,7 @@ class Client:
 					#print("CRC mismatch")
 					continue
 			except Exception as e:
-				print(e)
-				break
+				continue
 
 			self.callback(idx, pkt_data)
 
