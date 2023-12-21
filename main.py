@@ -3,6 +3,8 @@ from order import *
 from map import *
 from matplotlib import pyplot as plt
 
+from Lidar import *
+
 # while True:
 #     order = get_order()
 #     if order is None:

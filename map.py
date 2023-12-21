@@ -1,5 +1,6 @@
 import numpy as np
 
+from Lidar import *
 
 def norm(t):
     return (t[0] ** 2 + t[1] ** 2) ** 0.5
@@ -22,6 +23,7 @@ class Map:
     width: int
     height: int
     path: list
+    lidar_collider_list: list
 
     def __init__(self, board_width, board_height):
         self.width = board_width
@@ -31,6 +33,7 @@ class Map:
         self.h = np.zeros((board_width, board_height))
         self.h[:, :] = float("NaN")
         self.path = []
+        self.lidar_collider_list = []
 
     def get_neighbours(self, v):
         neighbours = []
@@ -42,16 +45,29 @@ class Map:
                         neighbours.append((coord, norm(coord)))
         return neighbours
 
+    def update_collider_with_lidar(self, position, orientation, laser: HokuyoLX, res: int):
+        timestamp, scan = laser.get_dist()
+        for pos in self.lidar_collider_list:
+            self.update_collider(pos, 0)
+        for i in range(res):
+            f = i / res
+            angle = laser.amin + f * (laser.amax - laser.amin)
+            dist = get_distance_at_angle(laser, scan, angle)
+            pos = Vec2(1.0, 0.0).rotate(angle + orientation).scale(dist).add(position)
+            if 0 <= pos.x < self.width and 0 <= pos.y < self.height:
+                self.update_collider(position, 1)
+                self.lidar_collider_list.append(position)
+
     def update_collider(self, position, value):
         if self.board[position[1]][position[0]] != value:
             self.board[position[1]][position[0]] = value
 
     def get_h(self, n, stop_node):
-        # return 1
-        dist = sub(stop_node, n)
-        mn = float(abs(min(dist, key=abs)))
-        mx = float(abs(max(dist, key=abs)))
-        return mn * 2 ** 0.5 + (mx - mn)
+        return 1
+        # dist = sub(stop_node, n)
+        # mn = float(abs(min(dist, key=abs)))
+        # mx = float(abs(max(dist, key=abs)))
+        # return mn * 2 ** 0.5 + (mx - mn)
 
     def a_star(self, start_node, stop_node):
         # open_list is a list of nodes which have been visited, but who's neighbors
