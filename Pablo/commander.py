@@ -66,7 +66,7 @@ class BaseCommander(cmd.Cmd):
 			idx = int(arg[0])
 			telem = self.pico.telem_from_idx(idx)
 		except:
-			telem = self.pico.telem_from_name(idx)
+			telem = self.pico.telem_from_name(arg[0])
 
 		if not telem:
 			print("Pas bon argument")
@@ -84,7 +84,7 @@ class BaseCommander(cmd.Cmd):
 
 class AsservCommander(BaseCommander):
 	def __init__(self, asserv):
-		super(Commander, self).__init__(asserv)
+		super(AsservCommander, self).__init__(asserv)
 
 	def do_pos(self, arg):
 		"""Returns the position of the Asserv Pico"""

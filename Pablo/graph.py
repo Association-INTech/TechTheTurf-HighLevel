@@ -13,7 +13,7 @@ class TelemetryPlot:
 		pretty_name = telem.name.replace("_"," ").capitalize()
 		self.fig = plt.figure(pretty_name)
 		self.ax = self.fig.gca()
-		self.ax.set_ylim(-100,100)
+		self.ax.set_ylim(-1000,1000)
 		self.ax.set_title(pretty_name)
 		self.ax.set_xlabel("Time (s)")
 		self.plots = {name:self.ax.plot([], [], label=name)[0] for name in telem.fields()}
