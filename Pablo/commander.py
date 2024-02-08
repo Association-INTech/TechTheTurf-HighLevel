@@ -153,7 +153,24 @@ class AsservCommander(BaseCommander):
 		print(pid)
 		self.pico.set_pid(pid)
 
+	def do_denc(self, arg):
+		"""debug cmd: Gets encoder values"""
+		left, right = self.pico.debug_get_encoders()
+
+		print(f"Left: {left}, Right: {right}")
+
+	def do_dmot(self, arg):
+		"""debug cmd: move (leftval) (rightval)"""
+		if not arg or len(arg.split()) != 2:
+			print("Pas de vals")
+			return
+
+		lval, rval = map(float,arg.split())
+
+		self.pico.debug_set_encoders(lval, rval)
+
 	def do_sq(self, arg):
+		"""sq (side length)"""
 		try:
 			side_len = int(arg)
 		except:

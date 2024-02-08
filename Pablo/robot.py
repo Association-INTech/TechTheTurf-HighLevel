@@ -152,3 +152,13 @@ class Asserv(PicoBase):
 	def get_pid(self, pid):
 		ret = self.read(2 | (pid.idx << 4), 4*3)
 		return pid.from_bytes(ret)
+
+	# Read/Write
+
+	# returns left,right ticks
+	def debug_get_encoders(self):
+		return self.read_struct(11 | (0 << 4), "ii")
+
+	# returns left,right ticks
+	def debug_set_encoders(self, left, right):
+		return self.write_struct(11 | (1 << 4), "ff", left, right)
