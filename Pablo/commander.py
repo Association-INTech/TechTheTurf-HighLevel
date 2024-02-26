@@ -2,6 +2,7 @@ import math
 import cmd
 import time
 import robots
+import sys
 
 class BaseCommander(cmd.Cmd):
 	def __init__(self, pico):
@@ -153,6 +154,21 @@ class AsservCommander(BaseCommander):
 		print(pid)
 		self.pico.set_pid(pid)
 
+	def do_gsp(self, arg):
+		"""gets speed profile vmax and amax"""
+		vmax, amax = self.pico.get_speedprofile()
+
+		print(f"vmax:{vmax}mm/s amax:{amax}mm/s²")
+
+	def do_ssp(self, arg):
+		"""ssp (vmax) (amax)"""
+		if not arg or len(arg.split()) != 2:
+			print("Pas de vmax et amax")
+			return
+
+		vmax, amax = map(float,arg.split())
+		self.pico.set_speedprofile(vmax, amax)
+
 	def do_denc(self, arg):
 		"""debug cmd: Gets encoder values"""
 		left, right = self.pico.debug_get_encoders()
@@ -167,7 +183,7 @@ class AsservCommander(BaseCommander):
 
 		lval, rval = map(float,arg.split())
 
-		self.pico.debug_set_encoders(lval, rval)
+		self.pico.debug_set_motors(lval, rval)
 
 	def do_sq(self, arg):
 		"""sq (side length)"""
@@ -186,6 +202,18 @@ class AsservCommander(BaseCommander):
 			time.sleep(2)
 			self.pico.wait_completed()
 
+
+class ActionCommander(BaseCommander):
+	def __init__(self, action):
+		super(ActionCommander, self).__init__(action)
+
+	def do_demo(self, arg):
+		"""debug cmd: demo"""
+		self.pico.debug_demo()
+
 if __name__ == "__main__":
-	commander = AsservCommander(robots.makeAsserv())
+	if len(sys.argv) > 1 and sys.argv[1] == "a":
+		commander = ActionCommander(robots.makeAction())
+	else:
+		commander = AsservCommander(robots.makeAsserv())
 	commander.cmdloop()

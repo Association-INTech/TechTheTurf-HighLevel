@@ -143,6 +143,9 @@ class Asserv(PicoBase):
 		self.pids[pid.idx] = pid
 		self.write(5 | (pid.idx << 4), pid.to_bytes())
 
+	def set_speedprofile(self, vmax, amax):
+		return self.write_struct(13 | (0 << 4), "ff", vmax, amax)
+
 	# Read registers
 
 	def get_pos(self):
@@ -153,12 +156,25 @@ class Asserv(PicoBase):
 		ret = self.read(2 | (pid.idx << 4), 4*3)
 		return pid.from_bytes(ret)
 
+	def get_speedprofile(self):
+		return self.read_struct(12 | (0 << 4), "ff")
+
 	# Read/Write
 
 	# returns left,right ticks
 	def debug_get_encoders(self):
 		return self.read_struct(11 | (0 << 4), "ii")
 
-	# returns left,right ticks
-	def debug_set_encoders(self, left, right):
-		return self.write_struct(11 | (1 << 4), "ff", left, right)
+	def debug_set_motors(self, left, right):
+		self.write_struct(11 | (1 << 4), "ff", left, right)
+
+# Class for the pico that handles actuators
+
+class Action(PicoBase):
+	def __init__(self, bus=None, addr=None):
+		super().__init__(bus, addr)
+
+	# Read/Write
+
+	def debug_demo(self):
+		self.write_struct(1, "B", 1)

@@ -109,6 +109,9 @@ class Client:
 			except:
 				break
 
+			if len(size_dat) < 2:
+				continue
+
 			size, idx = struct.unpack(ENDIANNESS + "BB", size_dat)
 
 			try:
