@@ -48,6 +48,9 @@ class I2CBase:
 			return b"\x00"*size
 		return bytes(self.bus.read_i2c_block_data(self.addr, reg, size))
 
+	def write_cmd(self, reg):
+		self.write(reg, [])
+
 	def write_struct(self, reg, fmt, *data):
 		self.write(reg, struct.pack(ENDIANNESS + fmt, *data))
 
@@ -174,7 +177,41 @@ class Action(PicoBase):
 	def __init__(self, bus=None, addr=None):
 		super().__init__(bus, addr)
 
+	# Read
+
+	def elev_homed(self):
+		return self.read_struct(1 | (3 << 4), "?")[0]
+
+	def elev_pos(self):
+		return self.read_struct(1 | (4 << 4), "f")[0]
+
+	def arm_deployed(self):
+		return self.read_struct(2 | (3 << 4), "?")[0]
+
+	# Write
+
+	def elev_home(self):
+		self.write_cmd(1 | (0 << 4))
+
+	def elev_move_abs(self, pos):
+		self.write_struct(1 | (1 << 4), "f", pos)
+
+	def elev_move_rel(self, pos):
+		self.write_struct(1 | (2 << 4), "f", pos)
+
+	def arm_deploy(self):
+		self.write_cmd(2 | (0 << 4))
+
+	def arm_fold(self):
+		self.write_cmd(2 | (1 << 4))
+
+	def arm_turn(self, angle):
+		self.write_struct(2 | (2 << 4), "f", angle)
+
+	def pump_enable(self, pump_idx, state):
+		self.write_struct(3 | (pump_idx << 4), "?", state)
+
 	# Read/Write
 
 	def debug_demo(self):
-		self.write_struct(1, "B", 1)
+		self.write_cmd(15)

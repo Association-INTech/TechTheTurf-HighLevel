@@ -54,7 +54,7 @@ class BaseCommander(cmd.Cmd):
 		else:
 			try:
 				arg[1] = bool(arg[1])
-			except:
+			except Exception:
 				print("Pas bon argument")
 				return
 
@@ -66,7 +66,7 @@ class BaseCommander(cmd.Cmd):
 		try:
 			idx = int(arg[0])
 			telem = self.pico.telem_from_idx(idx)
-		except:
+		except Exception:
 			telem = self.pico.telem_from_name(arg[0])
 
 		if not telem:
@@ -122,7 +122,7 @@ class AsservCommander(BaseCommander):
 		try:
 			idx = int(arg)
 			pid = self.pico.pid_from_idx(idx)
-		except:
+		except Exception:
 			pid = self.pico.pid_from_name(arg)
 
 		if not pid:
@@ -142,7 +142,7 @@ class AsservCommander(BaseCommander):
 		try:
 			idx = int(arg[0])
 			pid = self.pico.pid_from_idx(idx)
-		except:
+		except Exception:
 			pid = self.pico.pid_from_name(arg[0])
 
 		if not pid:
@@ -189,7 +189,7 @@ class AsservCommander(BaseCommander):
 		"""sq (side length)"""
 		try:
 			side_len = int(arg)
-		except:
+		except Exception:
 			print("Pas bon argument")
 			return
 
@@ -210,6 +210,75 @@ class ActionCommander(BaseCommander):
 	def do_demo(self, arg):
 		"""debug cmd: demo"""
 		self.pico.debug_demo()
+
+	def do_ehomed(self, arg):
+		"""Is elevator homed ?"""
+		homed = self.pico.elev_homed()
+		print("Homed" if homed else "Not Homed")
+
+	def do_epos(self, arg):
+		"""Position of elevator (in mm)"""
+		pos = self.pico.elev_pos()
+		print(f"pos:{pos}mm")
+
+	def do_adeployed(self, arg):
+		"""Is arm deployed ?"""
+		deployed = self.pico.arm_deployed()
+		print("Arm deployed" if deployed else "Arm not deployed (not necessarly folded)")
+
+	def do_ehome(self, arg):
+		"""Homes the elevator, needed before moving"""
+		self.pico.elev_home()
+
+	def do_emove(self, arg):
+		"""emove (pos): absolute position elevator move"""
+		try:
+			pos = float(arg)
+		except Exception:
+			print("Pas bon argument")
+			return
+
+		self.pico.elev_move_abs(pos)
+
+	def do_emover(self, arg):
+		"""emover (pos): relative position elevator move"""
+		try:
+			pos = float(arg)
+		except Exception:
+			print("Pas bon argument")
+			return
+
+		self.pico.elev_move_rel(pos)
+
+	def do_adeploy(self, arg):
+		"""Deploys the arm"""
+		self.pico.arm_deploy()
+
+	def do_afold(self, arg):
+		"""Folds the arm in compact position"""
+		self.pico.arm_fold()
+
+	def do_aturn(self, arg):
+		"""aturn: (angle): turn arm head by angle"""
+		try:
+			angle = float(arg)
+		except Exception:
+			print("Pas bon argument")
+			return
+
+		self.pico.arm_turn(angle)
+
+	def do_pump(self, arg):
+		try:
+			sp = arg.split(" ")
+			idx = int(sp[0])
+			state = {"on":True,"off":False}[sp[1]]
+		except Exception:
+			print("Pas bon argument")
+			return
+
+		self.pico.pump_enable(idx, state)
+
 
 if __name__ == "__main__":
 	if len(sys.argv) > 1 and sys.argv[1] == "a":
