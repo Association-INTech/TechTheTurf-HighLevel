@@ -1,14 +1,7 @@
 import numpy as np
 
+from Vector import *
 from Lidar import *
-
-def norm(t):
-    return (t[0] ** 2 + t[1] ** 2) ** 0.5
-
-
-def normalize(t):
-    n = norm(t)
-    return t[0] / n, t[1] / n
 
 
 def sub(lhs, rhs):
@@ -24,6 +17,7 @@ class Map:
     height: int
     path: list
     lidar_collider_list: list
+    tmp_angle_dist: list
 
     def __init__(self, board_width, board_height):
         self.width = board_width
@@ -34,33 +28,35 @@ class Map:
         self.h[:, :] = float("NaN")
         self.path = []
         self.lidar_collider_list = []
+        self.tmp_angle_dist = []
 
-    def get_neighbours(self, v):
+    def get_neighbours(self, v: Vec2):
         neighbours = []
         for j in range(-1, 2):
             for i in range(-1, 2):
-                coord = (v[0] + i, v[1] + j)
-                if 0 <= coord[0] < self.width and 0 <= coord[1] < self.height:
-                    if self.board[coord[1]][coord[0]] == 0:
-                        neighbours.append((coord, norm(coord)))
+                coord = Vec2(int(v.x) + i, int(v.y) + j)
+                if 0 <= coord.x < self.width and 0 <= coord.y < self.height:
+                    if self.board[int(coord.y)][int(coord.x)] == 0:
+                        neighbours.append((coord, Vec2(int(coord.x), int(coord.y)).norm()))
         return neighbours
 
-    def update_collider_with_lidar(self, position, orientation, laser: HokuyoLX, res: int):
+    def update_collider_with_lidar(self, position: Vec2, orientation: 0.0, laser: HokuyoLX, res: int):
         timestamp, scan = laser.get_dist()
         for pos in self.lidar_collider_list:
             self.update_collider(pos, 0)
-        for i in range(res):
-            f = i / res
-            angle = laser.amin + f * (laser.amax - laser.amin)
-            dist = get_distance_at_angle(laser, scan, angle)
+
+        for angle_index in range(laser.amin, laser.amax):
+            dist = scan[angle_index]
+            angle = float(angle_index) / (laser.amax - laser.amin) * 280
+            self.tmp_angle_dist.append((angle, dist))
             pos = Vec2(1.0, 0.0).rotate(angle + orientation).scale(dist).add(position)
             if 0 <= pos.x < self.width and 0 <= pos.y < self.height:
                 self.update_collider(position, 1)
-                self.lidar_collider_list.append(position)
+                self.lidar_collider_list.append(pos)
 
-    def update_collider(self, position, value):
-        if self.board[position[1]][position[0]] != value:
-            self.board[position[1]][position[0]] = value
+    def update_collider(self, position: Vec2, value):
+        # if self.board[position[1]][position[0]] != value:
+        self.board[int(position.y)][int(position.x)] = value
 
     def get_h(self, n, stop_node):
         return 1
@@ -117,7 +113,7 @@ class Map:
                 if m not in open_list and m not in closed_list:
                     open_list.add(m)
 
-                    self.visited[m[1]][m[0]] = 1
+                    self.visited[int(m.y)][int(m.x)] = 1
                     parents[m] = n
                     g[m] = g[n] + weight
 
@@ -142,33 +138,33 @@ class Map:
         print('Path does not exist!')
         return None
 
-    def collides_on_line(self, pos_from, pos_to):
-        x0 = min(pos_from[0], pos_to[0])
-        x1 = max(pos_from[0], pos_to[0])
-        y0 = min(pos_from[1], pos_to[1])
-        y1 = max(pos_from[1], pos_to[1])
+    def collides_on_line(self, pos_from: Vec2, pos_to: Vec2):
+        x0 = min(pos_from.x, pos_to.x)
+        x1 = max(pos_from.x, pos_to.x)
+        y0 = min(pos_from.y, pos_to.y)
+        y1 = max(pos_from.y, pos_to.y)
 
         dx = x1 - x0
         dy = y1 - y0
         if dx > dy:
-            for x in range(x0, x1 + 1):
+            for x in range(int(x0), int(x1 + 1)):
                 y = int(y0 + dy * (x - x1) / dx)
                 if self.board[y][x] == 1:
                     return True
-            for y in range(y0, y1 + 1):
+            for y in range(int(y0), int(y1 + 1)):
                 x = int(x0 + dx * (y - y1) / dy)
                 if self.board[y][x] == 1:
                     return True
         return False
 
-    def vectorize_path(self, pos):
+    def vectorize_path(self, pos: Vec2):
         for i in range(len(self.path) - 1, 0, -1):
             if not self.collides_on_line(pos, self.path[i]):
                 for j in range(i - 1):
                     self.path.pop(1)
                 return
 
-    def get_path(self, start, finish):
+    def get_path(self, start: Vec2, finish: Vec2):
         self.path = self.a_star(start, finish)
         self.simplify_path()
         self.vectorize_path(start)
@@ -176,9 +172,13 @@ class Map:
     def simplify_path(self):
         i = 1
         while i < len(self.path) - 1:
-            delta0 = normalize(sub(self.path[i], self.path[i - 1]))
-            delta1 = normalize(sub(self.path[i + 1], self.path[i]))
-            if norm(sub(delta0, delta1)) < 0.1:
+            delta0 = self.path[i].sub(self.path[i - 1]).normalize()
+            delta1 = self.path[i + 1].sub(self.path[i]).normalize()
+            # delta0 = normalize(sub(self.path[i], self.path[i - 1]))
+            # delta1 = normalize(sub(self.path[i + 1], self.path[i]))
+
+            # if norm(sub(delta0, delta1)) < 0.1:
+            if delta0.sub(delta1).norm() < 0.1:
                 del self.path[i]
             else:
                 i += 1
