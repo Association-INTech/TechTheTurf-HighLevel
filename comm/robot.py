@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import struct
 import time
 
-import telemetry
+from . import telemetry
 
 ENDIANNESS = "<"
 POLLING_RATE = 50
@@ -35,15 +35,15 @@ class I2CBase:
 	def __init__(self, bus=None, addr=None):
 		self.bus = bus
 		self.addr = addr
-		self.i2cSimulate = bus is None
+		self.i2c_simulate = bus is None
 
 	def write(self, reg, data):
-		if self.i2cSimulate:
+		if self.i2c_simulate:
 			return
 		self.bus.write_i2c_block_data(self.addr, reg, data)
 
 	def read(self, reg, size):
-		if self.i2cSimulate:
+		if self.i2c_simulate:
 			return b"\x00"*size
 		return bytes(self.bus.read_i2c_block_data(self.addr, reg, size))
 
@@ -63,6 +63,10 @@ def block_cmd(func):
 	def inner(self, *args, **kwargs):
 		# Call the function normally
 		func(self, *args, **kwargs)
+
+		# If we're simulating, don't block at all
+		if self.i2c_simulate:
+			return
 
 		# If we need to block, do so
 		if self.is_blocking():

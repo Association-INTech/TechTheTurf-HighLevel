@@ -1,72 +1,34 @@
-# TODO
+# HL INTech de la CDR 2024
 
-## Communication par l'I2C
+ca bouge ????
 
-lien gdocs: https://docs.google.com/spreadsheets/d/11dtBx3tYL44sK2REWkbLKTJWfvl4ePpTwKAwb9weIOo/edit?usp=sharing
+## Que font les scripts ?
 
-Bleu
-### Configurer la RaspBerry pi:
+- `main.py` Script principale qui fait tout fonctionner ensemble
+- `graph.py <ip>` Script pour avoir les graph des pids
+- `ps4.py [p]` Script pour controller le robot avec une manette (avec p pour le pami)
+- `commander.py [a]` Script pour debug en cmd (avec a pour les actionneurs) 
 
- - Si la commande  `i2cdetect` existe, elle est sûrement déjà configuré
- - Activer I2C
-```
-sudo raspi-config
-// Interface settings -> I2C -> Yes
-```
- - outils i2c sytème/python
-```
-sudo apt-get install i2c_tools
-sudo apt-get install python3-pip
-python3 -m pip install smbus2
-```
+## Setup Raspi
 
-### i2c avec smbus et python
-[documentation](https://pypi.org/project/smbus2/)
+- Activer l'I2C à travers `raspi-config`
+	```bash
+	sudo raspi-config
+	```
 
-principales méthodes à utliser:
- - SMBus.write_i2c_block_data
- - SMBus.read_i2c_block_data
+- Installer OpenOCD & GDB
+	```bash
+	sudo apt install openocd gdb-multiarch
+	```
 
-#### Objectifs
- - savoir communiquer avec des pico en esclave
- - interface python
+- Installer smbus2 en global
+	```bash
+	python -m pip install smbus2
+	```
 
-
-## Descriptif des échanges de données
-A déterminer ([ancien exemple](https://docs.google.com/spreadsheets/d/1NDprMKYs9L7S2TkqgACDOh6OKDJRHhz_LrTCKmEuD-k/edit?usp=sharing))
-
- - taille des trames: fixe, variable
- - contenu des trames
- - fonctionnalités principales:
-   - ordonner une trajectoire
-   - interruption/reprise de trajectoire
-   - lire/écrire des variables
-   - lire valeur de codeuses
-
-##  Invite de commandes interactif avec cmd
-
-Usage basique de cmd:
-
-```py 
-# nom de fichier example.py
-import cmd
-
-class Shell(cmd.Cmd): 
-    def do_command(self, line):
-        """nom générique "do_<nom de commande>" """
-        print(f"You entered \"{line}\" as arguments")
-
-
-Shell().cmdloop()
-```
-Dans un terminal en lançant `py example.py` (Windows) ou `python3 example.py` (Linux) on obtient :
-```
-(Cmd) > command
-You enterded "" as arguments
-(Cmd) > command Python > C
-You enterded "Python > C" as arguments
-```
-
- ### Objectifs
-
- - intégrer la communication avec la pico
+- Script pour flash les picos
+	```bash
+	#!/bin/bash
+	# Utilisation : ./flash pami.elf
+	openocd -f /usr/share/openocd/scripts/interface/raspberrypi2-native.cfg -c "bcm2835gpio swd_nums 26 19; adapter_khz 1000" -f /usr/share/openocd/scripts/target/rp2040.cfg -c "program $1 verify ; init ; reset halt ; rp2040.core1 arp_reset assert 0 ; rp2040.core0 arp_reset assert 0; exit"
+	```

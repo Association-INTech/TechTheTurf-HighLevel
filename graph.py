@@ -1,11 +1,11 @@
 import sys
-import telemetry
-import robot
-import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
-robot = robot.Asserv()
+import comm.telemetry as telemetry
+import comm
+
+robot = comm.make_asserv()
 
 class TelemetryPlot:
 	def __init__(self, telem):

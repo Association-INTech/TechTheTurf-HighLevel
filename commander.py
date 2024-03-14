@@ -1,8 +1,9 @@
 import math
 import cmd
 import time
-import robots
 import sys
+
+import comm
 
 class BaseCommander(cmd.Cmd):
 	def __init__(self, pico):
@@ -32,7 +33,7 @@ class BaseCommander(cmd.Cmd):
 
 	def do_exit(self, arg):
 		"""Stops & quits"""
-		print("Ciao")
+		print("Adios")
 		self.do_off(arg)
 		return True
 
@@ -339,7 +340,7 @@ class ActionCommander(BaseCommander):
 
 if __name__ == "__main__":
 	if len(sys.argv) > 1 and sys.argv[1] == "a":
-		commander = ActionCommander(robots.makeAction())
+		commander = ActionCommander(comm.make_action())
 	else:
-		commander = AsservCommander(robots.makeAsserv())
+		commander = AsservCommander(comm.make_asserv())
 	commander.cmdloop()
