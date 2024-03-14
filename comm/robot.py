@@ -61,6 +61,14 @@ class I2CBase:
 def block_cmd(func):
 
 	def inner(self, *args, **kwargs):
+		# Get default blocking behaviour
+		blocking = self.is_blocking()
+
+		# Check if we got asked to force blocking or not, replace default
+		if "blocking" in kwargs:
+			blocking = kwargs["blocking"]
+			del kwargs["blocking"]
+
 		# Call the function normally
 		func(self, *args, **kwargs)
 
@@ -69,7 +77,7 @@ def block_cmd(func):
 			return
 
 		# If we need to block, do so
-		if self.is_blocking():
+		if blocking:
 			self.wait_completed()
 
 	return inner
@@ -170,6 +178,9 @@ class Asserv(PicoBase):
 	@block_cmd
 	def move(self, rho, theta):
 		self.write_struct(1, "ff", rho, theta)
+
+	def emergency_stop(self):
+		self.write_cmd(0 | (1 << 4))
 
 	def set_pid(self, pid):
 		self.pids[pid.idx] = pid

@@ -151,7 +151,7 @@ try:
 					action.pump_enable(1, False)
 
 		elev = deadzone(gamepad.axis(joyElevator))
-		speed = -deadzone(gamepad.axis(joySpeed))
+		speed = deadzone(gamepad.axis(joySpeed))
 		turn = -deadzone(gamepad.axis(joyTurn))
 		turbo = trigger(gamepad.axis(joyTurbo))
 		slow = trigger(gamepad.axis(joySlow))
