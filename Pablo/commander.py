@@ -92,6 +92,11 @@ class AsservCommander(BaseCommander):
 		dst,theta = self.pico.get_pos()
 		print(f"theta: {math.degrees(theta):.2f}° dst: {dst:.2f}mm")
 
+	def do_posx(self, arg):
+		"""Returns the position of the Asserv Pico in X,Y"""
+		x,y = self.pico.get_pos_xy()
+		print(f"x,y: {x:.2f}, {y:.2f}mm")
+
 	def do_move(self, arg):
 		"""move (theta) (dst)"""
 		if not arg or len(arg.split()) != 2:
@@ -193,14 +198,12 @@ class AsservCommander(BaseCommander):
 			print("Pas bon argument")
 			return
 
-		self.pico.wait_completed()
 		for i in range(4):
 			print(i)
 			self.pico.move(side_len, 0)
 			time.sleep(2)
 			self.pico.move(0, math.radians(90))
 			time.sleep(2)
-			self.pico.wait_completed()
 
 
 class ActionCommander(BaseCommander):
@@ -209,7 +212,56 @@ class ActionCommander(BaseCommander):
 
 	def do_demo(self, arg):
 		"""debug cmd: demo"""
-		self.pico.debug_demo()
+		self.pico.start()
+
+		self.pico.pump_enable(0, True)
+		print("pe")
+		time.sleep(1)
+		self.pico.pump_enable(0, False)
+		print("pd")
+
+		time.sleep(1)
+
+		self.pico.elev_home()
+		print("eh")
+		time.sleep(0.5)
+
+		self.pico.elev_move_abs(125)
+		print("emove")
+		time.sleep(0.5)
+
+		self.pico.elev_move_abs(65)
+		print("emove")
+		time.sleep(0.5)
+
+		self.pico.elev_move_abs(0)
+		print("emove")
+		time.sleep(0.5)
+
+		self.pico.elev_home()
+		print("eh")
+
+		time.sleep(1)
+
+		self.pico.arm_fold()
+		print("af")
+		time.sleep(1)
+
+		self.pico.arm_deploy()
+		print("ad")
+		time.sleep(1)
+
+		self.pico.arm_turn(360)
+		print("at")
+		time.sleep(0.5)
+		self.pico.arm_turn(-180)
+		print("at")
+		time.sleep(0.5)
+
+		self.pico.arm_fold()
+		print("af")
+
+		self.pico.stop()
 
 	def do_ehomed(self, arg):
 		"""Is elevator homed ?"""
@@ -225,6 +277,11 @@ class ActionCommander(BaseCommander):
 		"""Is arm deployed ?"""
 		deployed = self.pico.arm_deployed()
 		print("Arm deployed" if deployed else "Arm not deployed (not necessarly folded)")
+
+	def do_aangles(self, arg):
+		"""Get arm angles, deployed and turn in degrees"""
+		dep, turn = self.pico.arm_angles()
+		print(f"deploy:{dep}deg, turn:{turn}deg")
 
 	def do_ehome(self, arg):
 		"""Homes the elevator, needed before moving"""

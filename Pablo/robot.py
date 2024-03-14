@@ -1,4 +1,3 @@
-import numpy as np
 from dataclasses import dataclass
 import struct
 import time
@@ -58,11 +57,26 @@ class I2CBase:
 		ret = self.read(reg, struct.calcsize(fmt))
 		return struct.unpack(ENDIANNESS + fmt, ret)
 
+# A decorator to block until the command has finished
+def block_cmd(func):
+
+	def inner(self, *args, **kwargs):
+		# Call the function normally
+		func(self, *args, **kwargs)
+
+		# If we need to block, do so
+		if self.is_blocking():
+			self.wait_completed()
+
+	return inner
+
+
 # Base class for pico microcontrollers on robots
 
 class PicoBase(I2CBase):
 	def __init__(self, bus=None, addr=None):
 		super().__init__(bus, addr)
+		self.set_blocking(True)
 		self.set_running(False)
 		self.telems = {}
 
@@ -79,8 +93,17 @@ class PicoBase(I2CBase):
 			return self.telems[idx]
 		return None
 
+	# Blocking state logic
+
+	def set_blocking(self, val):
+		self.blocking = val
+
+	def is_blocking(self):
+		return self.blocking
+
 	# Writer registers/ orders
 
+	@block_cmd
 	def set_running(self, state):
 		state = not not state
 		self.write_struct(0, "B", state)
@@ -113,6 +136,7 @@ class Asserv(PicoBase):
 		super().__init__(bus, addr)
 
 		self.last_pos = (0,0) # rho, theta
+		self.last_pos_xy = (0,0) # x, y
 		self.set_running(False)
 		self.pids = {}
 		for pid in [Pid("theta", 0), Pid("rho", 1), Pid("left_vel", 2), Pid("right_vel", 3)]:
@@ -139,6 +163,7 @@ class Asserv(PicoBase):
 
 	# Write registers/ orders
 
+	@block_cmd
 	def move(self, rho, theta):
 		self.write_struct(1, "ff", rho, theta)
 
@@ -152,8 +177,12 @@ class Asserv(PicoBase):
 	# Read registers
 
 	def get_pos(self):
-		self.last_pos = self.read_struct(3, "ff")
+		self.last_pos = self.read_struct(3 | (0 << 4), "ff")
 		return self.last_pos
+
+	def get_pos_xy(self):
+		self.last_pos_xy = self.read_struct(3 | (1 << 4), "ff")
+		return self.last_pos_xy
 
 	def get_pid(self, pid):
 		ret = self.read(2 | (pid.idx << 4), 4*3)
@@ -168,8 +197,12 @@ class Asserv(PicoBase):
 	def debug_get_encoders(self):
 		return self.read_struct(11 | (0 << 4), "ii")
 
+	# sets motor speed values manually
 	def debug_set_motors(self, left, right):
 		self.write_struct(11 | (1 << 4), "ff", left, right)
+
+	def debug_set_target(self, dst, theta):
+		self.write_struct(11 | (2 << 4), "ff", dst, theta)
 
 # Class for the pico that handles actuators
 
@@ -188,30 +221,40 @@ class Action(PicoBase):
 	def arm_deployed(self):
 		return self.read_struct(2 | (3 << 4), "?")[0]
 
+	def arm_angles(self):
+		return self.read_struct(2 | (4 << 4), "ff")
+
 	# Write
 
+	@block_cmd
 	def elev_home(self):
 		self.write_cmd(1 | (0 << 4))
 
+	@block_cmd
 	def elev_move_abs(self, pos):
 		self.write_struct(1 | (1 << 4), "f", pos)
 
+	@block_cmd
 	def elev_move_rel(self, pos):
 		self.write_struct(1 | (2 << 4), "f", pos)
 
+	@block_cmd
 	def arm_deploy(self):
 		self.write_cmd(2 | (0 << 4))
 
+	@block_cmd
 	def arm_fold(self):
 		self.write_cmd(2 | (1 << 4))
 
+	@block_cmd
 	def arm_turn(self, angle):
 		self.write_struct(2 | (2 << 4), "f", angle)
 
+	@block_cmd
 	def pump_enable(self, pump_idx, state):
 		self.write_struct(3 | (pump_idx << 4), "?", state)
 
 	# Read/Write
 
-	def debug_demo(self):
-		self.write_cmd(15)
+	#def debug_demo(self):
+	#	self.write_cmd(15)
