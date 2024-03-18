@@ -19,6 +19,7 @@ class TelemetryPacketBase:
 		del vals["timestamp"]
 		return vals
 
+	@staticmethod
 	def fmt():
 		return ENDIANNESS+"f"
 
@@ -28,6 +29,7 @@ class PidTelemetryPacket(TelemetryPacketBase):
 	input: float
 	output: float
 
+	@staticmethod
 	def fmt():
 		return "fff"
 
