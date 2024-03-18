@@ -1,7 +1,8 @@
 import time
 import sys
-import robots
-import pad.gamepad as pad
+
+import comm
+import utils.gamepad as pad
 
 UPDATE_FREQ = 100.0
 DEADZONE = 0.1
@@ -13,10 +14,10 @@ if len(sys.argv) > 1 and sys.argv[1] == "p":
 	ACTION_ENABLED = False
 	PAMI = True
 
-asserv = robots.makeAsserv()
+asserv = comm.make_asserv()
 asserv.set_blocking(False)
 if ACTION_ENABLED:
-	action = robots.makeAction()
+	action = comm.make_action()
 	action.set_blocking(False)
 
 class LimitedValue:
@@ -69,7 +70,7 @@ btnDeploy = "CROSS"
 btnFold = "CIRCLE"
 btnPump = "TRIANGLE"
 btnExit = "PS"
-joySpeed = "LEFT-Y"
+joySpeed = "LEFT-X"
 joyTurn = "RIGHT-X"
 joyTurbo = "R2"
 joySlow = "L2"
@@ -150,7 +151,7 @@ try:
 					action.pump_enable(1, False)
 
 		elev = deadzone(gamepad.axis(joyElevator))
-		speed = -deadzone(gamepad.axis(joySpeed))
+		speed = deadzone(gamepad.axis(joySpeed))
 		turn = -deadzone(gamepad.axis(joyTurn))
 		turbo = trigger(gamepad.axis(joyTurbo))
 		slow = trigger(gamepad.axis(joySlow))

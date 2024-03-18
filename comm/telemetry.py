@@ -1,9 +1,7 @@
 from dataclasses import dataclass
-import queue
 import threading
 import socket
 import struct
-import time
 import zlib
 
 ENDIANNESS = "<"
@@ -49,11 +47,11 @@ class Telemetry:
 		self.size = struct.calcsize(self.fmt)
 
 	def get_format(ty):
-		if not "fmt" in ty.__dict__:
+		if "fmt" not in ty.__dict__:
 			return None
 		st = ""
 		for base in ty.__bases__:
-			if not "fmt" in base.__dict__:
+			if "fmt" not in base.__dict__:
 				continue
 			st += Telemetry.get_format(base)
 		return st + ty.fmt()
