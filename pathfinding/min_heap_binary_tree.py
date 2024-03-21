@@ -98,6 +98,9 @@ class MinHeapBinaryTree(Generic[T]):
         if len(self.values) == 0:
             return None
 
+        if len(self.values) == 1:
+            return self.values.pop(0)
+
         # Minimum is guaranteed to return an int, because we already
         # verified that the length of the tree is non-zero.
         minimum: int = self.min()
@@ -109,14 +112,15 @@ class MinHeapBinaryTree(Generic[T]):
         self.values[0] = last_element
 
         # Heapify the heap.
-        self.heapify(0)
+        self.heapify()
 
         return minimum
 
-    def heapify(self, index: int):
+    def heapify(self, index: int = 0):
         """
         Fix the tree after popping an element.
         """
+
         if len(self.values) <= 1:
             return
 
@@ -128,11 +132,11 @@ class MinHeapBinaryTree(Generic[T]):
         smallest_index = index
 
         if left_index < length and self.comparison(self.values[left_index],
-                                                   self.values[index]) == Comparison.LESS:
+                                                   self.values[smallest_index]) == Comparison.LESS:
             smallest_index = left_index
 
         if right_index < length and self.comparison(self.values[right_index],
-                                                    self.values[index]) == Comparison.LESS:
+                                                    self.values[smallest_index]) == Comparison.LESS:
             smallest_index = right_index
 
         if smallest_index != index:
@@ -143,3 +147,16 @@ class MinHeapBinaryTree(Generic[T]):
             # Recursion baby!!
             self.heapify(smallest_index)
 
+    def display(self, index: int = 0, depth: int = 0) -> None:
+        """
+        Displays the tree. for the full tree, don't change any parameters.
+        """
+        if index >= len(self.values):
+            return
+
+        tabulation: str = ""
+        for _ in range(depth):
+            tabulation += "\t"
+        print(tabulation, self.values[index])
+        self.display(self.left_child_index(index), depth + 1)
+        self.display(self.right_child_index(index), depth + 1)

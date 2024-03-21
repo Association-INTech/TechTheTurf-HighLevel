@@ -152,7 +152,7 @@ class AStar:
         g: numpy.array = numpy.full(dimension, -1, dtype=int)
         g[start_index] = 0
         # H: idealistic distance between the current position and the end position.
-        h: numpy.array = numpy.array(([self.distance_between(i, end_index)] for i in range(dimension)), dtype=int)
+        h: numpy.array = numpy.array([self.distance_between(i, end_index) for i in range(dimension)], dtype=int)
 
         # list of two values, the first is the index, the second the value at that index.
         # The comparison is done on the value, hence index 1.
@@ -189,7 +189,13 @@ class AStar:
                     continue
                 cost_to_neighbour = g[current_index] + 10
 
-                neighbour_in_search: bool = neighbour_index in to_search
+                # neighbour_in_search: bool = neighbour_index in to_search
+                neighbour_in_search: bool = False
+                for element in to_search.values:
+                    if element[0] == neighbour_index:
+                        neighbour_in_search = True
+                        break
+
                 if not neighbour_in_search or cost_to_neighbour < g[neighbour_index]:
                     g[neighbour_index] = cost_to_neighbour
                     parent[neighbour_index] = current_index
@@ -204,7 +210,12 @@ class AStar:
                     continue
                 cost_to_neighbour = g[current_index] + 14
 
-                neighbour_in_search: bool = neighbour_index in to_search
+                neighbour_in_search: bool = False
+                for element in to_search.values:
+                    if element[0] == neighbour_index:
+                        neighbour_in_search = True
+                        break
+
                 if not neighbour_in_search or cost_to_neighbour < g[neighbour_index]:
                     g[neighbour_index] = cost_to_neighbour
                     parent[neighbour_index] = current_index
