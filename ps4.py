@@ -10,9 +10,14 @@ ELEV_MAX = 200.0
 PAMI = False
 ACTION_ENABLED = True
 
-if len(sys.argv) > 1 and sys.argv[1] == "p":
+if len(sys.argv) > 1:
+	if sys.argv[1] == "p":
+		PAMI = True
+	elif sys.argv[1] == "na":
+		ACTION_ENABLED = False
+
+if PAMI:
 	ACTION_ENABLED = False
-	PAMI = True
 
 asserv = comm.make_asserv()
 asserv.set_blocking(False)
@@ -55,14 +60,14 @@ if PAMI:
 	turn_speed = 2 # rad/s
 	speed_accel_lim = 1000 # mm^2/s
 else:
-	prec_speed_remove = 600 # mm/s
+	prec_speed_remove = 300 # mm/s
 	prec_turn_remove = 1.5 # rad/s
-	turbo_speed_add = 700 # mm/s
-	move_speed = 700 # mm/s
+	turbo_speed_add = 300 # mm/s
+	move_speed = 400 # mm/s
 	elev_speed = 25 # mm per button press
 	turn_speed = 2 # rad/s
 	arm_turn_speed = 600 # deg/s
-	speed_accel_lim = 1500 # mm^2/s
+	speed_accel_lim = 1000 # mm^2/s
 
 # Gamepad setup
 gamepadType = pad.PS4
@@ -70,7 +75,7 @@ btnDeploy = "CROSS"
 btnFold = "CIRCLE"
 btnPump = "TRIANGLE"
 btnExit = "PS"
-joySpeed = "LEFT-X"
+joySpeed = "LEFT-Y"
 joyTurn = "RIGHT-X"
 joyTurbo = "R2"
 joySlow = "L2"
@@ -124,14 +129,20 @@ def deadzone(val):
 def trigger(val):
 	return (val+1.0)/2.0
 
+state = True
+
 try:
 	while gamepad.isConnected():
 		dt = end-st
 		st = time.time()
 
 		if gamepad.beenPressed(btnExit):
-			print("Exit")
-			break
+			state = not state
+			asserv.set_running(state)
+			dst = 0
+			theta = 0
+			dstVel.reset()
+			print(f"State is {state}")
 
 		if ACTION_ENABLED:
 			if gamepad.beenPressed(btnDeploy):
@@ -151,7 +162,7 @@ try:
 					action.pump_enable(1, False)
 
 		elev = deadzone(gamepad.axis(joyElevator))
-		speed = deadzone(gamepad.axis(joySpeed))
+		speed = -deadzone(gamepad.axis(joySpeed))
 		turn = -deadzone(gamepad.axis(joyTurn))
 		turbo = trigger(gamepad.axis(joyTurbo))
 		slow = trigger(gamepad.axis(joySlow))
