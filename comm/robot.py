@@ -219,6 +219,10 @@ class Asserv(PicoBase):
 	def debug_set_target(self, dst, theta):
 		self.write_struct(11 | (2 << 4), "ff", dst, theta)
 
+	def debug_set_motors_enable(self, state):
+		state = not not state
+		self.write_struct(11 | (3 << 4), "B", state)
+
 # Class for the pico that handles actuators
 
 class Action(PicoBase):
