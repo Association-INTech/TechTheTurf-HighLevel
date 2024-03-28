@@ -11,24 +11,17 @@ ca bouge ????
 
 ## Setup Raspi
 
-- Activer l'I2C à travers `raspi-config`
-	```bash
-	sudo raspi-config
-	```
+```bash
+# Turn on I2C
+sudo raspi-config nonint do_i2c 0
+# Install OpenOCD & GDB
+sudo apt install -y openocd gdb-multiarch
+# Install smbus2 globally
+python -m pip install smbus2
+```
 
-- Installer OpenOCD & GDB
-	```bash
-	sudo apt install openocd gdb-multiarch
-	```
+## Flasher les picos
 
-- Installer smbus2 en global
-	```bash
-	python -m pip install smbus2
-	```
+Le script `tools/flash.sh` permet de flasher les différents picos.
 
-- Script pour flash les picos
-	```bash
-	#!/bin/bash
-	# Utilisation : ./flash pami.elf
-	openocd -f /usr/share/openocd/scripts/interface/raspberrypi2-native.cfg -c "bcm2835gpio swd_nums 26 19; adapter_khz 1000" -f /usr/share/openocd/scripts/target/rp2040.cfg -c "program $1 verify ; init ; reset halt ; rp2040.core1 arp_reset assert 0 ; rp2040.core0 arp_reset assert 0; exit"
-	```
+Par exemple pour flasher `paminable.elf` sur une pico d'un pami: `./tools/flash.sh paminable.elf pami`

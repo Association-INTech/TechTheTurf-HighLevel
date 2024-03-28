@@ -5,6 +5,15 @@ import sys
 
 import comm
 
+def str_to_bool(val):
+	val = val.strip().lower()
+	if val in ["on", "true", "1"]:
+		return True
+	elif val in ["off", "false", "0"]:
+		return False
+	else:
+		return None
+
 class BaseCommander(cmd.Cmd):
 	def __init__(self, pico):
 		super(BaseCommander, self).__init__()
@@ -14,7 +23,7 @@ class BaseCommander(cmd.Cmd):
 	def do_on(self, arg):
 		"""Starts"""
 		if self.started:
-			print("Déja on")
+			print("Already on")
 			return
 
 		self.started = True
@@ -24,7 +33,7 @@ class BaseCommander(cmd.Cmd):
 	def do_off(self, arg):
 		"""Stops"""
 		if not self.started:
-			print("Déja off")
+			print("Already off")
 			return
 
 		self.started = False
@@ -43,21 +52,17 @@ class BaseCommander(cmd.Cmd):
 			print(telem)
 
 	def do_stelem(self, arg):
-		"""stelem (idx/name) on/off """
+		"""stelem (idx/name) on/off: turns on or off selected telemetry"""
 		arg = arg.strip().lower().split()
 		if len(arg) < 2:
-			print("Pas bon argument")
+			print("Wrong arguments")
 			return
-		if arg[1] == "on":
-			arg[1] = True
-		elif arg[1] == "off":
-			arg[1] = False
-		else:
-			try:
-				arg[1] = bool(arg[1])
-			except Exception:
-				print("Pas bon argument")
-				return
+
+		arg[1] = str_to_bool(arg[1])
+
+		if arg[1] is None:
+			print("Wrong arguments")
+			return
 
 		if arg[0] == "all":
 			for telem in self.pico.telems.values():
@@ -71,12 +76,13 @@ class BaseCommander(cmd.Cmd):
 			telem = self.pico.telem_from_name(arg[0])
 
 		if not telem:
-			print("Pas bon argument")
+			print("Wrong arguments")
 			return
 
 		self.pico.set_telem(telem, arg[1])
 
 	def do_ready(self, arg):
+		"""ready: checks if the robot is ready to receive a new order"""
 		val = self.pico.ready_for_order()
 		if val:
 			print("Ready")
@@ -101,17 +107,17 @@ class AsservCommander(BaseCommander):
 	def do_move(self, arg):
 		"""move (theta) (dst)"""
 		if not arg or len(arg.split()) != 2:
-			print("Pas de theta et distance")
+			print("No thetha and distance")
 			return
 
 		if not self.started:
-			print("Asserv pas démmaré")
+			print("Asserv not started")
 			return
 
 		theta, dst = map(float,arg.split())
 		theta = math.radians(theta)
 
-		print(f"Déplacement de theta {theta}rad et rho {dst}")
+		print(f"Moving theta:{theta}rad and rho:{dst}mm")
 		self.pico.move(dst, theta)
 
 	def do_pids(self, arg):
@@ -122,7 +128,7 @@ class AsservCommander(BaseCommander):
 	def do_gpid(self, arg):
 		"""gpid (id/nom pid)"""
 		if not arg:
-			print("Pas de numéro/nom de pid")
+			print("Wrong arguments")
 			return
 
 		try:
@@ -132,7 +138,7 @@ class AsservCommander(BaseCommander):
 			pid = self.pico.pid_from_name(arg)
 
 		if not pid:
-			print("Pas bon PID")
+			print("Wrong PID")
 			return
 
 		self.pico.get_pid(pid)
@@ -142,7 +148,7 @@ class AsservCommander(BaseCommander):
 		"""spid (id/nom pid) (kp) (ki) (kd)"""
 		arg = arg.split()
 		if not arg or len(arg) < 4:
-			print("Pas de numéro/nom de pid et valeurs")
+			print("Wrong arguments")
 			return
 
 		try:
@@ -152,7 +158,7 @@ class AsservCommander(BaseCommander):
 			pid = self.pico.pid_from_name(arg[0])
 
 		if not pid:
-			print("Pas bon PID")
+			print("Wrong PID")
 			return
 
 		kp, ki, kd = map(float, arg[1:])
@@ -169,7 +175,7 @@ class AsservCommander(BaseCommander):
 	def do_ssp(self, arg):
 		"""ssp (vmax) (amax)"""
 		if not arg or len(arg.split()) != 2:
-			print("Pas de vmax et amax")
+			print("No vmax and amax")
 			return
 
 		vmax, amax = map(float,arg.split())
@@ -182,21 +188,31 @@ class AsservCommander(BaseCommander):
 		print(f"Left: {left}, Right: {right}")
 
 	def do_dmot(self, arg):
-		"""debug cmd: move (leftval) (rightval)"""
+		"""debug cmd: dmot (leftval) (rightval)"""
 		if not arg or len(arg.split()) != 2:
-			print("Pas de vals")
+			print("No left and right values")
 			return
 
 		lval, rval = map(float,arg.split())
 
 		self.pico.debug_set_motors(lval, rval)
 
+	def do_dmote(self, arg):
+		"""debug cmd: dmote (on/off), enables or disables the motor drivers"""
+		arg = str_to_bool(arg)
+
+		if arg is None:
+			print("Wrong arguments")
+			return
+
+		self.pico.debug_set_motors_enable(arg)
+
 	def do_sq(self, arg):
 		"""sq (side length)"""
 		try:
 			side_len = int(arg)
 		except Exception:
-			print("Pas bon argument")
+			print("Wrong arguments")
 			return
 
 		for i in range(4):
@@ -293,7 +309,7 @@ class ActionCommander(BaseCommander):
 		try:
 			pos = float(arg)
 		except Exception:
-			print("Pas bon argument")
+			print("Wrong arguments")
 			return
 
 		self.pico.elev_move_abs(pos)
@@ -303,7 +319,7 @@ class ActionCommander(BaseCommander):
 		try:
 			pos = float(arg)
 		except Exception:
-			print("Pas bon argument")
+			print("Wrong arguments")
 			return
 
 		self.pico.elev_move_rel(pos)
@@ -321,7 +337,7 @@ class ActionCommander(BaseCommander):
 		try:
 			angle = float(arg)
 		except Exception:
-			print("Pas bon argument")
+			print("Wrong arguments")
 			return
 
 		self.pico.arm_turn(angle)
@@ -332,7 +348,7 @@ class ActionCommander(BaseCommander):
 			idx = int(sp[0])
 			state = {"on":True,"off":False}[sp[1]]
 		except Exception:
-			print("Pas bon argument")
+			print("Wrong arguments")
 			return
 
 		self.pico.pump_enable(idx, state)
