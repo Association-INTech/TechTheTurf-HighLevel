@@ -1,7 +1,9 @@
 from typing import Optional
 import numpy
-from min_heap_binary_tree import MinHeapBinaryTree, Comparison
+import numpy as np
 
+from min_heap_binary_tree import MinHeapBinaryTree
+import sys
 
 class AStar:
     """
@@ -49,8 +51,11 @@ class AStar:
         Get the index in the grid based off of the tuple x, y
         (returns None if the resulting index is out of bounds).
         """
-        value = x + self.x_dim * y
-        if not (0 <= value < len(self.grid)):
+        if x < 0 or y < 0:
+            return None
+        length: int = len(self.grid)
+        value: int = x + self.x_dim * y
+        if not (0 <= value < length):
             return None
         return x + self.x_dim * y
 
@@ -59,9 +64,52 @@ class AStar:
         Get the position integer tuple (x, y) based off of the index
         in the grid (returns None if out of bounds).
         """
-        if not (0 <= index < len(self.grid)):
+        length: int = len(self.grid)
+
+        if not (0 <= index < length):
             return None
         return index % self.x_dim, index // self.x_dim
+
+    def get_valid_neighbours(self, index) -> Optional[list[tuple]]:
+        if not (0 <= index < len(self.grid)):
+            return None
+
+        result = []
+        x, y = self.index_to_pos(index)
+
+        neighbour = self.pos_to_index(x - 1, y)
+        if neighbour is not None and self.grid[neighbour] == 0:
+            result.append((neighbour, 10))
+
+        neighbour = self.pos_to_index(x + 1, y)
+        if neighbour is not None and self.grid[neighbour] == 0:
+            result.append((neighbour, 10))
+
+        neighbour = self.pos_to_index(x, y - 1)
+        if neighbour is not None and self.grid[neighbour] == 0:
+            result.append((neighbour, 10))
+
+        neighbour = self.pos_to_index(x, y + 1)
+        if neighbour is not None and self.grid[neighbour] == 0:
+            result.append((neighbour, 10))
+
+        neighbour = self.pos_to_index(x - 1, y - 1)
+        if neighbour is not None and self.grid[neighbour] == 0:
+            result.append((neighbour, 14))
+
+        neighbour = self.pos_to_index(x + 1, y - 1)
+        if neighbour is not None and self.grid[neighbour] == 0:
+            result.append((neighbour, 14))
+
+        neighbour = self.pos_to_index(x - 1, y + 1)
+        if neighbour is not None and self.grid[neighbour] == 0:
+            result.append((neighbour, 14))
+
+        neighbour = self.pos_to_index(x + 1, y + 1)
+        if neighbour is not None and self.grid[neighbour] == 0:
+            result.append((neighbour, 14))
+
+        return result
 
     def get_valid_plus_neighbours(self, index: int) -> list[int]:
         """
@@ -138,6 +186,7 @@ class AStar:
         # which gives 10 max + 4 min
         start_x, start_y = self.index_to_pos(start_index)
         end_x, end_y = self.index_to_pos(end_index)
+
         dx = abs(end_x - start_x)
         dy = abs(end_y - start_y)
 
@@ -149,26 +198,25 @@ class AStar:
         dimension = len(self.grid)
         parent: numpy.array = numpy.full(dimension, -1, dtype=int)
         # G: distance between the start position and the current position.
-        g: numpy.array = numpy.full(dimension, -1, dtype=int)
+        g: numpy.array = numpy.full(dimension, sys.maxsize, dtype=int)
         g[start_index] = 0
         # H: idealistic distance between the current position and the end position.
         h: numpy.array = numpy.array([self.distance_between(i, end_index) for i in range(dimension)], dtype=int)
 
         # list of two values, the first is the index, the second the value at that index.
         # The comparison is done on the value, hence index 1.
-        to_search = MinHeapBinaryTree(lambda lhs, rhs: Comparison.from_int(lhs[1], rhs[1]))
-        to_search.push([start_index, self.grid[start_index]])
+        to_search = MinHeapBinaryTree(lambda i: g[i] + h[i], np.array([-1 for _ in range(dimension)]))
+        to_search.push(start_index)
 
         # List of int tuples of already searched cells in the grid.
-        already_searched: list[list[int]] = []
+        # already_searched: list[int] = []
 
         while not to_search.is_empty():
+            # to_search.display()
             # Get the value with the smallest value.
-            current: list[int] = to_search.pop()
-            current_index = current[0]
-            current_value = current[1]
+            current_index: int = to_search.pop()
 
-            already_searched.append(current)
+            # already_searched.append(current_index)
 
             # Handle end case (we know that the path exists, no
             # need to handle the case where we don't reach the
@@ -176,54 +224,61 @@ class AStar:
             if current_index == end_index:
                 current_path_cell = end_index
                 path: list[int] = []
-                while parent[current_path_cell] != start_index:
+                while current_path_cell != start_index:
                     path.append(current_path_cell)
                     current_path_cell = parent[current_path_cell]
-
                 path.reverse()
                 return path
 
             # Check all neighbours.
-            for neighbour_index in self.get_valid_plus_neighbours(current_index):
-                if neighbour_index in already_searched:
-                    continue
-                cost_to_neighbour = g[current_index] + 10
+            for neighbour_index, distance in self.get_valid_neighbours(current_index):
+                # if neighbour_index in already_searched:
+                #     continue
+                cost_to_neighbour = g[current_index] + distance
 
-                # neighbour_in_search: bool = neighbour_index in to_search
-                neighbour_in_search: bool = False
-                for element in to_search.values:
-                    if element[0] == neighbour_index:
-                        neighbour_in_search = True
-                        break
-
-                if not neighbour_in_search or cost_to_neighbour < g[neighbour_index]:
+                if cost_to_neighbour < g[neighbour_index]:
                     g[neighbour_index] = cost_to_neighbour
                     parent[neighbour_index] = current_index
 
-                    if not neighbour_in_search:
-                        h[neighbour_index] = self.distance_between(neighbour_index, end_index)
-                        # Add the neighbour's index and value to the list to search.
-                        to_search.push([neighbour_index, self.grid[neighbour_index]])
+                    # neighbour_in_search = False
+                    # for element in to_search.values:
+                    #     if element == neighbour_index:
+                    #         neighbour_in_search = True
+                    #         element[1] = min(element[1], g[neighbour_index] + h[neighbour_index])
+                    #         break
 
-            for neighbour_index in self.get_valid_x_neighbours(current_index):
-                if neighbour_index in already_searched:
-                    continue
-                cost_to_neighbour = g[current_index] + 14
-
-                neighbour_in_search: bool = False
-                for element in to_search.values:
-                    if element[0] == neighbour_index:
-                        neighbour_in_search = True
-                        break
-
-                if not neighbour_in_search or cost_to_neighbour < g[neighbour_index]:
-                    g[neighbour_index] = cost_to_neighbour
-                    parent[neighbour_index] = current_index
-
-                    if not neighbour_in_search:
-                        h[neighbour_index] = self.distance_between(neighbour_index, end_index)
-                        # Add the neighbour's index and value to the list to search.
-                        to_search.push([neighbour_index, self.grid[neighbour_index]])
+                    if to_search.location[neighbour_index] == -1:
+                        to_search.push(neighbour_index)
+                    else:
+                        to_search.update(to_search.location[neighbour_index])
+                        to_search.display()
+                        assert to_search.guarantee_integrity()
 
         # There is no path.
         return None
+
+    # def vectorize_path(self, path) -> list[int]:
+    #     for i in range(len(path) - 1, 0, -1):
+    #         if not self.collides_on_line(pos, path[i]):
+    #             for j in range(i - 1):
+    #                 path.pop(1)
+    #             return
+
+    def collides_on_line(self, from_x, from_y, to_x, to_y):
+        x0 = min(from_x, to_x)
+        x1 = max(from_x, to_x)
+        y0 = min(from_y, to_y)
+        y1 = max(from_y, to_y)
+
+        dx = x1 - x0
+        dy = y1 - y0
+        if dx > dy:
+            for x in range(int(x0), int(x1 + 1)):
+                y = int(y0 + dy * (x - x1) / dx)
+                if self.board[y][x] == 1:
+                    return True
+            for y in range(int(y0), int(y1 + 1)):
+                x = int(x0 + dx * (y - y1) / dy)
+                if self.board[y][x] == 1:
+                    return True
+        return False
