@@ -89,6 +89,16 @@ class BaseCommander(cmd.Cmd):
 		else:
 			print("Not Ready")
 
+	def do_sb(self, arg):
+		"""sb (on/off): enables/disables blocking on commands"""
+		arg = str_to_bool(arg)
+
+		if arg is None:
+			print("Wrong arguments")
+			return
+
+		self.pico.set_blocking(arg)
+
 
 class AsservCommander(BaseCommander):
 	def __init__(self, asserv):
@@ -166,20 +176,35 @@ class AsservCommander(BaseCommander):
 		print(pid)
 		self.pico.set_pid(pid)
 
-	def do_gsp(self, arg):
-		"""gets speed profile vmax and amax"""
-		vmax, amax = self.pico.get_speedprofile()
+	def do_gdsp(self, arg):
+		"""gets dst speed profile vmax and amax"""
+		vmax, amax = self.pico.get_dst_speedprofile()
 
 		print(f"vmax:{vmax}mm/s amax:{amax}mm/s²")
 
-	def do_ssp(self, arg):
-		"""ssp (vmax) (amax)"""
+	def do_gasp(self, arg):
+		"""gets angle speed profile vmax and amax"""
+		vmax, amax = self.pico.get_angle_speedprofile()
+
+		print(f"vmax:{vmax}rad/s amax:{amax}rad/s²")
+
+	def do_sdsp(self, arg):
+		"""sdsp (vmax) (amax): sets dst speed profile"""
 		if not arg or len(arg.split()) != 2:
 			print("No vmax and amax")
 			return
 
 		vmax, amax = map(float,arg.split())
-		self.pico.set_speedprofile(vmax, amax)
+		self.pico.set_dst_speedprofile(vmax, amax)
+
+	def do_sasp(self, arg):
+		"""sasp (vmax) (amax): sets angle speed profile"""
+		if not arg or len(arg.split()) != 2:
+			print("No vmax and amax")
+			return
+
+		vmax, amax = map(float,arg.split())
+		self.pico.set_angle_speedprofile(vmax, amax)
 
 	def do_denc(self, arg):
 		"""debug cmd: Gets encoder values"""
@@ -206,6 +231,12 @@ class AsservCommander(BaseCommander):
 			return
 
 		self.pico.debug_set_motors_enable(arg)
+
+	def do_dstate(self, arg):
+		"""debug cmd: dstate, returns the state of the controller"""
+		state = self.pico.debug_get_controller_state()
+		state = ["Reaching Theta", "Reaching Dst", "Reached target"][state]
+		print(f"State: {state}")
 
 	def do_sq(self, arg):
 		"""sq (side length)"""

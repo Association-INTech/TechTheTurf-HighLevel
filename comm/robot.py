@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import struct
 import time
+import threading
 
 from . import telemetry
 
@@ -36,16 +37,23 @@ class I2CBase:
 		self.bus = bus
 		self.addr = addr
 		self.i2c_simulate = bus is None
+		self.lock = threading.Lock()
 
 	def write(self, reg, data):
 		if self.i2c_simulate:
 			return
-		self.bus.write_i2c_block_data(self.addr, reg, data)
+
+		with self.lock:
+			self.bus.write_i2c_block_data(self.addr, reg, data)
 
 	def read(self, reg, size):
 		if self.i2c_simulate:
 			return b"\x00"*size
-		return bytes(self.bus.read_i2c_block_data(self.addr, reg, size))
+
+		with self.lock:
+			dat = bytes(self.bus.read_i2c_block_data(self.addr, reg, size))
+
+		return dat
 
 	def write_cmd(self, reg):
 		self.write(reg, [])
@@ -58,29 +66,42 @@ class I2CBase:
 		return struct.unpack(ENDIANNESS + fmt, ret)
 
 # A decorator to block until the command has finished
-def block_cmd(func):
+def block_cmd(stoppable=False):
 
-	def inner(self, *args, **kwargs):
-		# Get default blocking behaviour
-		blocking = self.is_blocking()
+	def decorator(func):
 
-		# Check if we got asked to force blocking or not, replace default
-		if "blocking" in kwargs:
-			blocking = kwargs["blocking"]
-			del kwargs["blocking"]
+		def inner(self, *args, **kwargs):
+			# Get default blocking behaviour
+			blocking = self.is_blocking()
 
-		# Call the function normally
-		func(self, *args, **kwargs)
+			# Check if we got asked to force blocking or not, replace default
+			if "blocking" in kwargs:
+				blocking = kwargs["blocking"]
+				del kwargs["blocking"]
 
-		# If we're simulating, don't block at all
-		if self.i2c_simulate:
-			return
+			# If this is a new stoppable command, wait until we're back running
+			if stoppable:
+				self.running_flag.wait()
 
-		# If we need to block, do so
-		if blocking:
-			self.wait_completed()
+			# Call the function normally
+			func(self, *args, **kwargs)
 
-	return inner
+			# If we're simulating, don't block at all
+			if self.i2c_simulate:
+				return
+
+			# If we need to block, do so
+			if blocking:
+				self.wait_completed()
+
+			# After an emergency stop, we've reached target so the blocking finishes
+			# We still want to block until we can start running again.
+			if stoppable:
+				self.running_flag.wait()
+
+		return inner
+
+	return decorator
 
 
 # Base class for pico microcontrollers on robots
@@ -91,6 +112,9 @@ class PicoBase(I2CBase):
 		self.set_blocking(True)
 		self.set_running(False)
 		self.telems = {}
+		# The running flag is set if we can execute stoppable commands
+		self.running_flag = threading.Event()
+		self.running_flag.set()
 
 	# Data helpers
 
@@ -113,9 +137,23 @@ class PicoBase(I2CBase):
 	def is_blocking(self):
 		return self.blocking
 
+	# Stoppable state logic
+
+	def notify_stop(self):
+		if self.running_flag.is_set():
+			self.notify_stop_action()
+		self.running_flag.clear()
+
+	def notify_stop_clear(self):
+		self.running_flag.set()
+
+	# To be overriden by classes extending this one
+	def notify_stop_action(self):
+		pass
+
 	# Writer registers/ orders
 
-	@block_cmd
+	@block_cmd()
 	def set_running(self, state):
 		state = not not state
 		self.write_struct(0, "B", state)
@@ -128,12 +166,12 @@ class PicoBase(I2CBase):
 		self.set_running(False)
 
 	def set_telem(self, telem, state):
-		self.write_struct(6 | (telem.idx << 4), "B", state)
+		self.write_struct(6 | (telem.idx << 4), "?", state)
 
 	# Read registers
 
 	def ready_for_order(self):
-		return self.read_struct(10, "B")[0] == 1
+		return self.read_struct(10, "?")[0] == 1
 
 	# Command Helpers
 
@@ -173,9 +211,14 @@ class Asserv(PicoBase):
 			return self.pids[idx]
 		return None
 
+	# Stoppable state logic
+
+	def notify_stop_action(self):
+		self.emergency_stop()
+
 	# Write registers/ orders
 
-	@block_cmd
+	@block_cmd(stoppable=True)
 	def move(self, rho, theta):
 		self.write_struct(1, "ff", rho, theta)
 
@@ -186,8 +229,11 @@ class Asserv(PicoBase):
 		self.pids[pid.idx] = pid
 		self.write(5 | (pid.idx << 4), pid.to_bytes())
 
-	def set_speedprofile(self, vmax, amax):
+	def set_dst_speedprofile(self, vmax, amax):
 		return self.write_struct(13 | (0 << 4), "ff", vmax, amax)
+
+	def set_angle_speedprofile(self, vmax, amax):
+		return self.write_struct(13 | (1 << 4), "ff", vmax, amax)
 
 	# Read registers
 
@@ -203,8 +249,11 @@ class Asserv(PicoBase):
 		ret = self.read(2 | (pid.idx << 4), 4*3)
 		return pid.from_bytes(ret)
 
-	def get_speedprofile(self):
+	def get_dst_speedprofile(self):
 		return self.read_struct(12 | (0 << 4), "ff")
+
+	def get_angle_speedprofile(self):
+		return self.read_struct(12 | (1 << 4), "ff")
 
 	# Read/Write
 
@@ -221,7 +270,10 @@ class Asserv(PicoBase):
 
 	def debug_set_motors_enable(self, state):
 		state = not not state
-		self.write_struct(11 | (3 << 4), "B", state)
+		self.write_struct(11 | (3 << 4), "?", state)
+
+	def debug_get_controller_state(self):
+		return self.read_struct(11 | (4 << 4), "B")[0]
 
 # Class for the pico that handles actuators
 
@@ -245,35 +297,30 @@ class Action(PicoBase):
 
 	# Write
 
-	@block_cmd
+	@block_cmd()
 	def elev_home(self):
 		self.write_cmd(1 | (0 << 4))
 
-	@block_cmd
+	@block_cmd()
 	def elev_move_abs(self, pos):
 		self.write_struct(1 | (1 << 4), "f", pos)
 
-	@block_cmd
+	@block_cmd()
 	def elev_move_rel(self, pos):
 		self.write_struct(1 | (2 << 4), "f", pos)
 
-	@block_cmd
+	@block_cmd()
 	def arm_deploy(self):
 		self.write_cmd(2 | (0 << 4))
 
-	@block_cmd
+	@block_cmd()
 	def arm_fold(self):
 		self.write_cmd(2 | (1 << 4))
 
-	@block_cmd
+	@block_cmd()
 	def arm_turn(self, angle):
 		self.write_struct(2 | (2 << 4), "f", angle)
 
-	@block_cmd
+	@block_cmd()
 	def pump_enable(self, pump_idx, state):
 		self.write_struct(3 | (pump_idx << 4), "?", state)
-
-	# Read/Write
-
-	#def debug_demo(self):
-	#	self.write_cmd(15)
