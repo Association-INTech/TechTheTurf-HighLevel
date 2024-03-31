@@ -50,4 +50,3 @@ if __name__ == '__main__':
     # For reproducibility
     random.seed(b'BLUE')
     test_random_obstacles()
-    # plot_examples([CMAP])
