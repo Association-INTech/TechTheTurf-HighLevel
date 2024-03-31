@@ -28,22 +28,15 @@ def test_straight(nb_tests=20, nb_points=2000):
     print()
 
 
-case0 = lambda x: f'({x})'
-case1 = lambda x: f'{x}()'
-case2 = lambda x: f'(){x}'
-cases = case0, case1, case2
-
-
 def random_parentheses(n):
     """
     Also known as Dyck word
     https://en.wikipedia.org/wiki/Dyck_language
     """
-    result = '()'
-    for _ in range(1, n):
-        case = int(3 * random.random())
-        result = cases[case](result)
-    return result
+    if not n:
+        return ''
+    k = int(random.random() * n)
+    return f'({random_parentheses(k)}){random_parentheses(n-1 - k)}'
 
 
 def test_random_order(nb_tests=20, nb_points=2000):
@@ -77,5 +70,5 @@ if __name__ == '__main__':
     random.seed(1)
 
     # Don't fool around with nb_points, 10_000 already takes ages because of the invariant check
-    test_straight()
-    test_random_order(nb_points=1_000)
+    # test_straight()
+    test_random_order(nb_points=50_000)
