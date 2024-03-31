@@ -206,3 +206,60 @@ def shortest_path(graph: Graph, start, end) -> tuple[list, np.ndarray]:
         current = graph.de_hash(predecessors[current])
         path.insert(0, current)
     return path, costs
+
+def shortest_path_no_heap_optimization(graph: Graph, start, end) -> tuple[list, np.ndarray]:
+    """
+    A* shortest path algorithm
+
+    return path (and costs for visual debug purposes)
+    """
+    costs, heuristics, predecessors = (
+        graph.caching_array(np.int32, -1),
+        graph.caching_array(np.int32, -1),
+        graph.caching_array(np.int32, -1)
+    )
+
+    def f_score(node):
+        # return costs[node] + heuristics[node]
+        # Favor closest to the end
+        return costs[node] + heuristics[node], heuristics[node]
+
+    heap = []
+
+    if isinstance(start, list):
+        # multi-source
+        for node in start:
+            costs[node] = 0
+            heuristics[node] = graph.heuristic(node, end)
+            heap.append(node)
+    else:
+        # single-source
+        costs[start] = 0
+        heuristics[start] = graph.heuristic(start, end)
+        heap.append(start)
+
+    while heap:
+        index, current_node = min(enumerate(heap), key=lambda x: f_score(x[1]))
+        heap.pop(index)
+        if current_node == end:
+            break
+
+        for nb, cost in graph.get_neighbors(current_node):
+            # Have I met that guy ?
+            if costs[nb] == -1:
+                # Never met
+                heuristics[nb] = graph.heuristic(nb, end)
+                costs[nb] = costs[current_node] + cost
+                predecessors[nb] = graph.hash(current_node)
+                heap.append(nb)
+            # Is it a better path ?
+            elif costs[current_node] + cost < costs[nb]:
+                # Definitely better
+                costs[nb] = costs[current_node] + cost
+                predecessors[nb] = graph.hash(current_node)
+
+    path, current = [end], end
+    while predecessors[current] != -1:
+        current = graph.de_hash(predecessors[current])
+        path.insert(0, current)
+    return path, costs
