@@ -35,6 +35,10 @@ cases = case0, case1, case2
 
 
 def random_parentheses(n):
+    """
+    Also known as Dyck word
+    https://en.wikipedia.org/wiki/Dyck_language
+    """
     result = '()'
     for _ in range(1, n):
         case = int(3 * random.random())
