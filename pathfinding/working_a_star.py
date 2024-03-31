@@ -1,5 +1,5 @@
 """
-Bold name, I know; Shame on me if it does not work
+Bold name, I know; Shame on me if it does not work (works on my machine)
 """
 
 import numpy as np
@@ -149,7 +149,12 @@ class MinHeap(list):
             index, parent_index = parent_index, (parent_index - 1) // 2
 
 
-def shortest_path(graph: Graph, start, end):
+def shortest_path(graph: Graph, start, end) -> tuple[list, np.ndarray]:
+    """
+    A* shortest path algorithm
+
+    return path (and costs for visual debug purposes)
+    """
     costs, heuristics, predecessors = (
         graph.caching_array(np.int32, -1),
         graph.caching_array(np.int32, -1),

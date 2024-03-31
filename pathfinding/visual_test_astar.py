@@ -23,10 +23,11 @@ def test_random_obstacles(nb_test=5):
 
         x, y = np.mgrid[:w, :h]
         for _ in range(30):
+            # put obstacles
             cx, cy = random.random() * w, random.random() * h
             rad = (1 + 2 * random.random()) * (w * w + h * h) ** .5 / 40
             grid[:] |= (x - cx) ** 2 + (y - cy) ** 2 < rad * rad
-        grid[0, 0] = 0
+        grid[0, 0] = VOID
 
         graph = BinaryGridGraph(grid)
         path, costs = shortest_path(graph, (0, 0), (w-1, h-1))
@@ -37,11 +38,15 @@ def test_random_obstacles(nb_test=5):
         fig, ax = plt.subplots(figsize=(10, 10))
 
         img = grid.copy()
+        # Mark visited node in dark red
         img[costs != -1] = VISITED
+        # Mark the path in red
         img[path[:, 0], path[:, 1]] = PATHWAY
         ax.matshow(img, cmap=CMAP, vmin=0, vmax=255)
 
+        # remove axes
         ax.set_axis_off()
+        # remove white space
         plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
         plt.show()
 
