@@ -48,6 +48,6 @@ def test_random_obstacles(nb_test=5):
 
 if __name__ == '__main__':
     # For reproducibility
-    random.seed(10)
+    random.seed(b'BLUE')
     test_random_obstacles()
     # plot_examples([CMAP])
