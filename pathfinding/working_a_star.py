@@ -2,7 +2,15 @@
 Bold name, I know; Shame on me if it does not work (works on my machine)
 """
 
+
 import numpy as np
+import os
+from ctypes import CDLL, POINTER, c_uint32, c_uint8
+
+DIR = os.path.dirname(__file__)
+c_astar = CDLL(os.path.join(DIR, 'libAstar.dll')).grid_astar
+c_astar.restype = POINTER(c_uint32)
+MAX_UINT32 = 0xffffffff
 
 
 class Graph:
@@ -263,3 +271,20 @@ def shortest_path_no_heap_optimization(graph: Graph, start, end) -> tuple[list, 
         current = graph.de_hash(predecessors[current])
         path.insert(0, current)
     return path, costs
+
+
+def shortest_path_c(grid: np.ndarray, start, end):
+    """
+    A* algorithm on grid graph, 8-connected, with heap optimization
+    compiled in c
+    """
+    width, height = grid.shape
+    start = width * start[1] + start[0]
+    end = width * end[1] + end[0]
+    result = c_astar(width, height, (c_uint8 * grid.size)(*grid.swapaxes(0, 1).flat), start, end)
+    index, path = 0, []
+    while result[index] != MAX_UINT32:
+        y, x = divmod(result[index], width)
+        path.append((x, y))
+        index += 1
+    return path
