@@ -4,53 +4,54 @@
 #include "min_heap.h"
 #include "stdlib.h"
 
+KeyValue KEY0, KEY1;
 
-uint32_t * call_context_function(const struct ContextFunction * const f, const uint32_t value) {
-    return f->function(value, f->context);
+void call_context_function(const ContextFunction * const f, const uint32_t value) {
+    return f->function(value, f->context, &KEY0);
 }
 
-int is_lower(const uint32_t * pair1, uint32_t * pair2) {
-    int result;
-    if (pair1[0] < pair2[0])
-        result = 1;
-    else if (pair1[0] == pair2[0])
-        result =  pair1[1] < pair2[1];
-    else
-        result =  0;
-    free(pair2);
-    return result;
+uint8_t compare_keys() {
+    if (KEY0.f_score < KEY1.f_score)
+        return 1;
+    if (KEY0.f_score == KEY1.f_score)
+        return KEY0.heuristic < KEY1.heuristic;
+    return 0;
 }
 
-void heap_init(struct MinHeap* const heap, const uint32_t max_size, struct ContextFunction *key) {
-    heap->MAX_SIZE = max_size;
+uint8_t call_and_compare(const ContextFunction * const f, const uint32_t value) {
+    f->function(value, f->context, &KEY1);
+    return compare_keys();
+}
+
+void heap_init(MinHeap* const heap, const uint32_t max_size, ContextFunction *key) {
     heap->length = 0;
     heap->indices = (uint32_t*) malloc(sizeof(uint32_t) * max_size);
     heap->values = (uint32_t*) malloc(sizeof(uint32_t) * max_size);
     heap->key = key;
 
-    for (int index = 0; index < max_size; index++) {
+    for (uint32_t index = 0; index < max_size; index++) {
         heap->indices[index] = UINT32_MAX;
         heap->values[index] = 0;
     }
 }
 
-void heap_clear(struct MinHeap *const heap) {
+void heap_clear(MinHeap *const heap) {
     free(heap->indices);
     free(heap->values);
 }
 
-void heap_push(struct MinHeap *const heap, const uint32_t value) {
+void heap_push(MinHeap *const heap, const uint32_t value) {
     heap->indices[value] = heap->length;
     heap->values[heap->length++] = value;
     heap_update(heap, value);
 }
 
-void heap_update(struct MinHeap *const heap, const uint32_t value) {
+void heap_update(MinHeap *const heap, const uint32_t value) {
     uint32_t index = heap->indices[value];
     uint32_t parent_index = (index - 1) / 2;
-    uint32_t *key = call_context_function(heap->key, value);
+    call_context_function(heap->key, value);
 
-    while (index >= 1 && is_lower(key, call_context_function(heap->key, heap->values[parent_index]))) {
+    while (index >= 1 && call_and_compare(heap->key, heap->values[parent_index])) {
         // Exchange in the array
         heap->values[index] = heap->values[parent_index];
         heap->values[parent_index] = value;
@@ -64,7 +65,7 @@ void heap_update(struct MinHeap *const heap, const uint32_t value) {
     }
 }
 
-uint32_t heap_extract_min(struct MinHeap *heap) {
+uint32_t heap_extract_min(MinHeap *heap) {
     // Minimum is out
     uint32_t result = heap->values[0];
     heap->indices[result] = UINT32_MAX;
@@ -75,19 +76,19 @@ uint32_t heap_extract_min(struct MinHeap *heap) {
 
     uint64_t index = 0;
     while (2 * index + 1 < heap->length) {
-        uint32_t* minimum = call_context_function(heap->key, heap->values[index]);
-        uint64_t min_index = index, left = 2 * index + 1, right = 2 * index + 2;
+        call_context_function(heap->key, heap->values[index]);
 
-        if (left < heap->length && !is_lower(minimum, call_context_function(heap->key, heap->values[left]))) {
-            free(minimum);
-            minimum = call_context_function(heap->key, heap->values[left]);
+        uint64_t min_index = index;
+
+        uint64_t left = 2 * index + 1;
+        if (left < heap->length && !call_and_compare(heap->key, heap->values[left])) {
+            KEY0.value = KEY1.value;
             min_index = left;
         }
 
-        if (right < heap->length && !is_lower(minimum, call_context_function(heap->key, heap->values[right]))) {
+        uint64_t right = 2 * index + 2;
+        if (right < heap->length && !call_and_compare(heap->key, heap->values[right]))
             min_index = right;
-        }
-        free(minimum);
 
         // Current is the minimum, no need to go further down
         if (min_index == index) break;

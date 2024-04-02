@@ -281,10 +281,10 @@ def shortest_path_c(grid: np.ndarray, start, end):
     width, height = grid.shape
     start = width * start[1] + start[0]
     end = width * end[1] + end[0]
-    result = c_astar(width, height, (c_uint8 * grid.size)(*grid.swapaxes(0, 1).flat), start, end)
+    result = c_astar(width, height, grid.ctypes.data_as(POINTER(c_uint8)), start, end)
     index, path = 0, []
     while result[index] != MAX_UINT32:
-        y, x = divmod(result[index], width)
+        x, y = divmod(result[index], height)
         path.append((x, y))
         index += 1
     return path

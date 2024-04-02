@@ -68,5 +68,5 @@ def test_random_obstacles(nb_test=10):
 
 if __name__ == '__main__':
     # For reproducibility
-    random.seed(b'BLUE')
+    random.seed(b'INTech')
     test_random_obstacles()
