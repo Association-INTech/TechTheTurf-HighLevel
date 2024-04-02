@@ -44,24 +44,24 @@ def test_random_obstacles(nb_test=10):
             _path, costs = shortest_path(graph, (0, 0), (w-1, h-1))
             terrible_time = time.perf_counter() - date
             path = np.array(path)
-            #
-            # fig: plt.Figure
-            # ax: plt.Axes
-            # fig, ax = plt.subplots(figsize=(16, 9))
-            #
-            # img = grid.copy()
-            # # Mark visited node in dark red
-            # # img[costs != -1] = VISITED
-            # # Mark the path in red
-            # img[path[:, 0], path[:, 1]] = PATHWAY
-            # ax.matshow(img.swapaxes(0, 1), cmap=CMAP, vmin=0, vmax=255)
-            #
-            # # remove axes
-            # ax.set_axis_off()
-            # # remove white space
-            # plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
-            # print(f'Default time: {terrible_time:.03f} s, C time: {c_time:.03f} s')
-            # plt.show()
+
+            fig: plt.Figure
+            ax: plt.Axes
+            fig, ax = plt.subplots(figsize=(16, 9))
+
+            img = grid.copy()
+            # Mark visited node in dark red
+            img[costs != -1] = VISITED
+            # Mark the path in red
+            img[path[:, 0], path[:, 1]] = PATHWAY
+            ax.matshow(img.swapaxes(0, 1), cmap=CMAP, vmin=0, vmax=255)
+
+            # remove axes
+            ax.set_axis_off()
+            # remove white space
+            plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+            print(f'Default time: {terrible_time:.03f} s, C time: {c_time:.03f} s')
+            plt.show()
         except OSError:
             print('Fuck')
 
@@ -69,4 +69,4 @@ def test_random_obstacles(nb_test=10):
 if __name__ == '__main__':
     # For reproducibility
     random.seed(b'BLUE')
-    test_random_obstacles(1)
+    test_random_obstacles()
