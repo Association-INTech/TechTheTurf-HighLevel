@@ -5,6 +5,24 @@ import numpy as np
 # import comm
 # from comm import Asserv
 # from pathfinding.a_star import AStar
+# use std::time::Instant;
+#
+# const MIN_DISTANCE: f32 = 0.5;
+#
+# fn main() {
+#     let ray: Vec<(f32, f32)> = (0..1_000_000).map(|_| (0.0, 0.0)).collect();
+#     let start = Instant::now();
+#
+#     let should_stop = ray
+#         .iter()
+#         .filter(|elem| elem.1 < MIN_DISTANCE)
+#         .map(|polar| (polar.0.cos() * polar.1, -polar.0.sin() * polar.1))
+#         .filter(|cart| cart.0 >= 0.0 && cart.0 < 100.0 && cart.1 >= 0.0 && cart.1 < 100.0)
+#         .count()
+#         != 0;
+#
+#     println!("{should_stop}: {:?}", start.elapsed());
+# }
 
 
 PATHFINDING_RESOLUTION_X = 100
