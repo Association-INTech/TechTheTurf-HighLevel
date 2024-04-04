@@ -12,7 +12,6 @@ tree.push(15)
 tree.push(1)
 tree.push(4)
 
-
 # A star stuff.
 
 X_SIZE = 100

@@ -24,6 +24,8 @@ class AStar:
     # Amount of cells along the Y axis.
     y_dim: int
 
+    has_updated_since_last_path: bool
+
     def __init__(self, x_dim: int, y_dim: int):
         """
         Parameters:
@@ -36,6 +38,7 @@ class AStar:
         self.grid = numpy.zeros(shape=x_dim*y_dim)
         self.x_dim = x_dim
         self.y_dim = y_dim
+        self.has_updated_since_last_path = False
 
     def update_grid(self, x: int, y: int, value: int):
         """
@@ -45,6 +48,7 @@ class AStar:
         index = self.pos_to_index(x, y)
         if index is not None:
             self.grid[index] = value
+            self.has_updated_since_last_path = True
 
     def pos_to_index(self, x: int, y: int) -> Optional[int]:
         """
@@ -195,6 +199,8 @@ class AStar:
         return 10 * maximum + 4 * minimum
 
     def find_path(self, start_index: int, end_index: int) -> Optional[list[int]]:
+        self.has_updated_since_last_path = True
+
         dimension = len(self.grid)
         parent: numpy.array = numpy.full(dimension, -1, dtype=int)
         # G: distance between the start position and the current position.
