@@ -22,8 +22,8 @@ case "$2" in
 		;;
 
 	act)
-		swc=17
-		swd=27
+		swc=5
+		swd=0
 		;;
 
 	ass)
