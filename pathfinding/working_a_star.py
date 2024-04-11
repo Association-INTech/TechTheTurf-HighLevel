@@ -34,6 +34,7 @@ class Graph:
 
 
 class BinaryGridGraph(Graph):
+    has_updated_collider_since_last_path_calculation: bool
     ONE, SQRT2 = 100, 141
     _4CONNECTED, _8CONNECTED = range(2)
 
@@ -45,7 +46,7 @@ class BinaryGridGraph(Graph):
         """
         self.width, self.height = grid.shape
         self.grid = grid
-        self.has_updated_since_last_path = False
+        self.has_updated_collider_since_last_path_calculation = False
 
         self.get_neighbors = (self.get_4_neighbors, self.get_8_neighbors)[connectivity]
         self.heuristic = (self.heuristic_4, self.heuristic_8)[connectivity]
@@ -92,9 +93,9 @@ class BinaryGridGraph(Graph):
     def de_hash(self, hash_value: np.int32):
         return hash_value % self.width, hash_value // self.width
 
-    def update_collider(self, index: int, value: int):
-        # self.
-        pass
+    def __setitem__(self, item, value):
+        self.grid[item] = value
+        self.has_updated_collider_since_last_path_calculation = True
 
 
 class MinHeap(list):
