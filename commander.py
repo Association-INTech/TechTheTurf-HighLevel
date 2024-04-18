@@ -238,6 +238,41 @@ class AsservCommander(BaseCommander):
 		state = ["Reaching Theta", "Reaching Dst", "Reached target"][state]
 		print(f"State: {state}")
 
+	def do_estop(self, arg):
+		"""estop: sends an emergency stop"""
+		self.pico.emergency_stop()
+
+	def do_movea(self, arg):
+		"""movea (x) (y): move to the absolute coords in a straight line"""
+
+		if not arg or len(arg.split()) != 2:
+			print("No x and y")
+			return
+
+		if not self.started:
+			print("Asserv not started")
+			return
+
+		tx, ty = map(float,arg.split())
+
+		dst, theta = self.pico.get_pos()
+		cx, cy = self.pico.get_pos_xy()
+		dx = tx - cx
+		dy = ty - cy
+
+		theta %= 2*math.pi
+
+		deltaTheta = (math.atan2(dy, dx)-theta)%(2*math.pi)
+		deltaDst = math.sqrt(dx * dx + dy * dy)
+
+		if deltaTheta > math.pi:
+			deltaTheta = 2*math.pi - deltaTheta
+		elif deltaTheta < -math.pi:
+			deltaTheta = 2*math.pi + deltaTheta
+
+		print(f"Moving {deltaTheta}rads, {deltaDst}mm")
+		self.pico.move(deltaDst, deltaTheta)
+
 	def do_sq(self, arg):
 		"""sq (side length)"""
 		try:
@@ -386,8 +421,18 @@ class ActionCommander(BaseCommander):
 
 
 if __name__ == "__main__":
+	# Build the right commander
 	if len(sys.argv) > 1 and sys.argv[1] == "a":
 		commander = ActionCommander(comm.make_action())
 	else:
 		commander = AsservCommander(comm.make_asserv())
-	commander.cmdloop()
+
+	# Run the cmd loop
+	try:
+		commander.cmdloop()
+	except KeyboardInterrupt:
+		print("CTRL-C, shutting down")
+		commander.do_off(None)
+	finally:
+		# When we finish, even if we crash, stop the pico
+		commander.pico.stop()
