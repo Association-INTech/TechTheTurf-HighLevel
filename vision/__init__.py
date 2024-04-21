@@ -1,5 +1,5 @@
 from .aruco import detect
-from .camera import Camera
+from .camera import Camera, LogitechWebcamC930e, HDProWebcamC920, get_available_cameras
 
 import warnings
 # TODO: comment this part to debug

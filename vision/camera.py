@@ -1,6 +1,6 @@
 import numpy as np
-from geometry import axle_rotation, X, Y, Z, opencv_save_my_ass, screen_to_ray, dot, mat_x
-from aruco import detect, BOARD_TAGS, filter_table_tags
+from .geometry import axle_rotation, X, Y, Z, opencv_save_my_ass, screen_to_ray, dot, mat_x
+from .aruco import detect, BOARD_TAGS, filter_table_tags
 from pygrabber.dshow_graph import FilterGraph
 import cv2
 

@@ -2,10 +2,10 @@ import time
 import os
 import cv2
 import numpy as np
-from geometry import find_camera_position, render_multi_cam_cached_matrices, opencv_save_my_ass
-from aruco import BOARD_TAGS, detect, get_point_indices
-from camera import HDProWebcamC920, LogitechWebcamC930e
-from combinations import COMBINATIONS
+from .geometry import find_camera_position, render_multi_cam_cached_matrices, opencv_save_my_ass
+from .aruco import BOARD_TAGS, detect, get_point_indices
+from .camera import HDProWebcamC920, LogitechWebcamC930e
+from .combinations import COMBINATIONS
 
 
 import warnings

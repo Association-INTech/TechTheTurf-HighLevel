@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from geometry import Z, mixt
+from .geometry import Z, mixt
 import os
 
 PATH = os.path.dirname(__file__)
