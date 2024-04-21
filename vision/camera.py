@@ -1,6 +1,8 @@
+import os
+
 import numpy as np
-from geometry import axle_rotation, X, Y, Z, opencv_save_my_ass, screen_to_ray, dot, mat_x
-from aruco import detect, BOARD_TAGS, filter_table_tags
+from .geometry import axle_rotation, X, Y, Z, opencv_save_my_ass, screen_to_ray, dot, mat_x
+from .aruco import detect, BOARD_TAGS, filter_table_tags
 import cv2
 import platform
 
@@ -14,6 +16,11 @@ if platform.system() == 'Windows':
     def get_available_cameras():
         devices = FilterGraph().get_input_devices()
         return dict(map(lambda x: x[::-1], enumerate(devices)))
+
+else:
+    def get_available_cameras():
+        results = map(lambda cam_cls: (cam_cls.name, os.popen(f'readlink -f {cam_cls.linux_v4l_location}')), (LogitechWebcamC930e, HDProWebcamC920))
+        return dict(filter(lambda pair: pair[1], results))
 
 
 I, J = np.mgrid[:4, :4]
@@ -121,12 +128,14 @@ class Camera:
 
 class HDProWebcamC920(Camera):
     name = 'HD Pro Webcam C920'
+    linux_v4l_location = '/dev/v4l/by-id/usb-046d_HD_Pro_Webcam_C920_C7FF4D4F-video-index0'
     _kx = 237 / 310
     _ky = 16/9 * _kx
 
 
 class LogitechWebcamC930e(Camera):
     name = 'Logitech Webcam C930e'
+    linux_v4l_location = '/dev/v4l/by-id/usb-046d_Logitech_Webcam_C930e_BBAD036E-video-index0'
     _kx = 237 / 390
     _ky = 16/9 * _kx
 
