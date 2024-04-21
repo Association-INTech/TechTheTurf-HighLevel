@@ -6,9 +6,11 @@ Bold name, I know; Shame on me if it does not work (works on my machine)
 import numpy as np
 import os
 from ctypes import CDLL, POINTER, c_uint32, c_uint8
+import platform
 
 DIR = os.path.dirname(__file__)
-c_astar = CDLL(os.path.join(DIR, 'libAstar.dll')).grid_astar
+
+c_astar = CDLL(os.path.join(DIR, 'libAstar.dll' if platform.system() == 'Windows' else 'libAstar.so')).grid_astar
 c_astar.restype = POINTER(c_uint32)
 MAX_UINT32 = 0xffffffff
 
