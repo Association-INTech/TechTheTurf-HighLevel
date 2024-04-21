@@ -1,7 +1,7 @@
-from .camera import LogitechWebcamC930e, HDProWebcamC920
-from .combinations import COMBINATIONS
-from .aruco import BOARD_TAGS, get_point_indices
-from .geometry import *
+from camera import LogitechWebcamC930e, HDProWebcamC920
+from combinations import COMBINATIONS
+from aruco import BOARD_TAGS, get_point_indices
+from geometry import *
 import time
 
 

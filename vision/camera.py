@@ -1,6 +1,6 @@
 import numpy as np
-from .geometry import axle_rotation, X, Y, Z, opencv_save_my_ass, screen_to_ray, dot, mat_x
-from .aruco import detect, BOARD_TAGS, filter_table_tags
+from geometry import axle_rotation, X, Y, Z, opencv_save_my_ass, screen_to_ray, dot, mat_x
+from aruco import detect, BOARD_TAGS, filter_table_tags
 from pygrabber.dshow_graph import FilterGraph
 import cv2
 
@@ -44,7 +44,7 @@ class Camera:
         cam_port = get_available_cameras().get(cls.name)
         if cam_port is None:
             return None
-        return cv2.VideoCapture(cam_port)
+        return cv2.VideoCapture(cam_port, cv2.CAP_DSHOW)
 
     def set_camera(self, global_zoom=None, width=None, height=None):
         if global_zoom is not None:
