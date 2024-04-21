@@ -19,7 +19,7 @@ if platform.system() == 'Windows':
 
 else:
     def get_available_cameras():
-        results = map(lambda cam_cls: (cam_cls.name, os.popen(f'readlink -f {cam_cls.linux_v4l_location}')), (LogitechWebcamC930e, HDProWebcamC920))
+        results = map(lambda cam_cls: (cam_cls.name, os.popen(f'readlink -f {cam_cls.linux_v4l_location}').read()), (LogitechWebcamC930e, HDProWebcamC920))
         return dict(filter(lambda pair: pair[1], results))
 
 
