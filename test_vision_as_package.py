@@ -1,3 +1,13 @@
+import numpy as np
+
 import vision as vs
-cams = vs.get_available_cameras()
-print(cams)
+import cv2
+import time
+import sys
+
+
+cam = vs.LogitechWebcamC930e.new()
+
+while True:
+    cam.read()
+    sys.stdout.write(cam.image.tostring())
