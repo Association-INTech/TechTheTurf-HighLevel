@@ -10,4 +10,4 @@ cam = vs.LogitechWebcamC930e.new()
 
 while True:
     cam.read()
-    sys.stdout.write(cam.image.tostring())
+    sys.stdout.buffer.write(cam.image.tobytes())
