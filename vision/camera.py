@@ -1,17 +1,19 @@
 import numpy as np
 from geometry import axle_rotation, X, Y, Z, opencv_save_my_ass, screen_to_ray, dot, mat_x
 from aruco import detect, BOARD_TAGS, filter_table_tags
-from pygrabber.dshow_graph import FilterGraph
 import cv2
+import platform
 
 # MJPG_CODEC = cv2.VideoWriter_fourcc(*'MJPG')
 MJPG_CODEC = 1196444237  # Hardcoded value so that pycharm shuts the f@#k up
 # Pycharm can't find any documentation about VideoWriter_fourcc
 
+if platform.system() == 'Windows':
+    from pygrabber.dshow_graph import FilterGraph
 
-def get_available_cameras():
-    devices = FilterGraph().get_input_devices()
-    return dict(map(lambda x: x[::-1], enumerate(devices)))
+    def get_available_cameras():
+        devices = FilterGraph().get_input_devices()
+        return dict(map(lambda x: x[::-1], enumerate(devices)))
 
 
 I, J = np.mgrid[:4, :4]
