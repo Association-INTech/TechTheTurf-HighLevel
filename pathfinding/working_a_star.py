@@ -10,7 +10,18 @@ import platform
 
 DIR = os.path.dirname(__file__)
 
-c_astar = CDLL(os.path.join(DIR, 'libAstar.dll' if platform.system() == 'Windows' else 'libAstar.so')).grid_astar
+if platform.system() == 'Windows':
+    c_astar = CDLL(os.path.join(DIR, 'libAstar.dll')).grid_astar
+else:
+    if not os.path.exists(os.path.join(DIR, 'libAstar.so')):
+        print('Astar library not found, building it')
+        old_dir = os.getcwd()
+        os.chdir(DIR)
+        os.system('sh ./build_c_astar.sh')
+        os.chdir(old_dir)
+        print('Astar libray built')
+    c_astar = CDLL(os.path.join(DIR, 'libAstar.so')).grid_astar
+
 c_astar.restype = POINTER(c_uint32)
 MAX_UINT32 = 0xffffffff
 
