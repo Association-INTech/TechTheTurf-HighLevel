@@ -31,6 +31,11 @@ class Camera:
     _zoom = 1.
     _kx, _ky = 1., 1.
 
+    if platform.system() == 'Windows':
+        cv_backend = cv2.CAP_DSHOW
+    else:
+        cv_backend = cv2.CAP_V4L
+
     def __init__(self, stream: cv2.VideoCapture | None, global_zoom: float, width: int, height: int):
         # capture part
         self.global_zoom, self.width, self.height = global_zoom, width, height
@@ -53,7 +58,11 @@ class Camera:
         cam_port = get_available_cameras().get(cls.name)
         if cam_port is None:
             return None
-        return cv2.VideoCapture(cam_port, cv2.CAP_DSHOW)
+        return cv2.VideoCapture(cam_port, cls.cv_backend)
+
+    @classmethod
+    def new(cls, global_zoom=1., width=1920, height=1080):
+        return cls(cls.find(), global_zoom, width, height)
 
     def set_camera(self, global_zoom=None, width=None, height=None):
         if global_zoom is not None:
