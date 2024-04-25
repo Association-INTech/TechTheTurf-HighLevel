@@ -53,7 +53,7 @@ def pathfinding_thread_function(strategy: list, robot: Asserv):
     while True:
         robot_position = robot.get_pos_xy()
 
-        path = shortest_path_c(astar.grid, robot_position, current_objective)
+        path = shortest_vectorized_path(astar.grid, robot_position, current_objective)
         # path = astar.find_path(
         #     astar.pos_to_index(robot_position[0], robot_position[1]),
         #     astar.pos_to_index(current_objective[0], current_objective[1]))
@@ -68,7 +68,7 @@ def pathfinding_thread_function(strategy: list, robot: Asserv):
 
             # Note: here the path is considered to be vectorized.
             if astar.has_updated_collider_since_last_path_calculation:
-                path = shortest_path_c(astar.grid, robot_position, current_objective)
+                path = shortest_vectorized_path(astar.grid, robot_position, current_objective)
 
                 # Restart the loop just in case. (who knows?)
                 continue
@@ -156,4 +156,3 @@ lidar_thread = threading.Thread(target=lidar_thread_function, args=(robot_asserv
 
 pathfinding_thread.join()
 lidar_thread.join()
-

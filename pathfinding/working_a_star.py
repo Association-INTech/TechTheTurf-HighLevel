@@ -307,3 +307,60 @@ def shortest_path_c(grid: np.ndarray, start, end):
         path.append((x, y))
         index += 1
     return path
+
+
+def simplify_path(path):
+    i = 1
+    while i < len(path) - 1:
+        delta0: tuple[int, int] = (path[i][0] - path[i - 1][0]), (path[i][1] - path[i - 1][1])
+        inv_norm0 = 1.0 / np.sqrt(delta0[0] ** 2 + delta0[1] ** 2)
+        delta0[0] *= inv_norm0
+        delta0[1] *= inv_norm0
+        delta1: tuple[int, int] = (path[i + 1][0] - path[i][0]), (path[i + 1][1] - path[i][1])
+        inv_norm1 = 1.0 / np.sqrt(delta1[0] ** 2 + delta1[1] ** 2)
+        delta1[0] *= inv_norm1
+        delta1[1] *= inv_norm1
+
+        diff = delta0[0] - delta1[0], delta0[1] - delta1[1]
+
+        if diff[0] ** 2 + diff[1] ** 2 < 0.1:
+            del path[i]
+        else:
+            i += 1
+
+
+def collide_on_line(pos_from: tuple[int, int], pos_to: tuple[int, int]) -> bool:
+    x0 = min(pos_from[0], pos_to[0])
+    x1 = max(pos_from[0], pos_to[0])
+    y0 = min(pos_from[1], pos_to[1])
+    y1 = max(pos_from[1], pos_to[1])
+
+    dx = x1 - x0
+    dy = y1 - y0
+    if dx > dy:
+        for x in range(int(x0), int(x1 + 1)):
+            y = int(y0 + dy * (x - x1) / dx)
+            if self.board[y][x] == 1:
+                return True
+        for y in range(int(y0), int(y1 + 1)):
+            x = int(x0 + dx * (y - y1) / dy)
+            if self.board[y][x] == 1:
+                return True
+    return False
+
+
+def vectorize_path(path, pos: tuple[int, int]):
+    for i in range(len(path) - 1, 0, -1):
+        if not collide_on_line(pos, path[i]):
+            for j in range(i - 1):
+                path.pop(1)
+            return
+
+
+def shortest_vectorized_path(grid: np.ndarray, start, end):
+    path = shortest_path_c(grid, start, end)
+
+    simplify_path(path)
+    vectorize_path(path, path[0])
+
+    return path
