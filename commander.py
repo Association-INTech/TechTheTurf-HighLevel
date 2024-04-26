@@ -260,15 +260,15 @@ class AsservCommander(BaseCommander):
 		dx = tx - cx
 		dy = ty - cy
 
-		theta %= 2*math.pi
-
-		deltaTheta = (math.atan2(dy, dx)-theta)%(2*math.pi)
+		deltaTheta = (math.atan2(dy, dx)-theta)
 		deltaDst = math.sqrt(dx * dx + dy * dy)
 
-		if deltaTheta > math.pi:
-			deltaTheta = 2*math.pi - deltaTheta
-		elif deltaTheta < -math.pi:
-			deltaTheta = 2*math.pi + deltaTheta
+		sign = 1 if deltaTheta > 0 else -1
+
+		deltaTheta %= sign*2*math.pi
+
+		if abs(deltaTheta) > math.pi:
+			deltaTheta = deltaTheta - sign*2*math.pi
 
 		print(f"Moving {deltaTheta}rads, {deltaDst}mm")
 		self.pico.move(deltaDst, deltaTheta)
@@ -326,22 +326,22 @@ class ActionCommander(BaseCommander):
 
 		time.sleep(1)
 
-		self.pico.arm_fold()
+		self.pico.right_arm_fold()
 		print("af")
 		time.sleep(1)
 
-		self.pico.arm_deploy()
+		self.pico.right_arm_deploy()
 		print("ad")
 		time.sleep(1)
 
-		self.pico.arm_turn(360)
+		self.pico.right_arm_turn(360)
 		print("at")
 		time.sleep(0.5)
-		self.pico.arm_turn(-180)
+		self.pico.right_arm_turn(-180)
 		print("at")
 		time.sleep(0.5)
 
-		self.pico.arm_fold()
+		self.pico.right_arm_fold()
 		print("af")
 
 		self.pico.stop()
@@ -355,16 +355,6 @@ class ActionCommander(BaseCommander):
 		"""Position of elevator (in mm)"""
 		pos = self.pico.elev_pos()
 		print(f"pos:{pos}mm")
-
-	def do_adeployed(self, arg):
-		"""Is arm deployed ?"""
-		deployed = self.pico.arm_deployed()
-		print("Arm deployed" if deployed else "Arm not deployed (not necessarly folded)")
-
-	def do_aangles(self, arg):
-		"""Get arm angles, deployed and turn in degrees"""
-		dep, turn = self.pico.arm_angles()
-		print(f"deploy:{dep}deg, turn:{turn}deg")
 
 	def do_ehome(self, arg):
 		"""Homes the elevator, needed before moving"""
@@ -390,23 +380,61 @@ class ActionCommander(BaseCommander):
 
 		self.pico.elev_move_rel(pos)
 
-	def do_adeploy(self, arg):
-		"""Deploys the arm"""
-		self.pico.arm_deploy()
+	def do_ardeployed(self, arg):
+		"""Is right arm deployed ?"""
+		deployed = self.pico.right_arm_deployed()
+		print("Arm deployed" if deployed else "Arm not deployed (not necessarly folded)")
 
-	def do_afold(self, arg):
-		"""Folds the arm in compact position"""
-		self.pico.arm_fold()
+	def do_arangles(self, arg):
+		"""Get right arm angles, deployed and turn in degrees"""
+		dep, turn = self.pico.right_arm_angles()
+		print(f"deploy:{dep}deg, turn:{turn}deg")
 
-	def do_aturn(self, arg):
-		"""aturn: (angle): turn arm head by angle"""
+	def do_ardeploy(self, arg):
+		"""Deploys the right arm"""
+		self.pico.right_arm_deploy()
+
+	def do_arfold(self, arg):
+		"""Folds the right arm in compact position"""
+		self.pico.right_arm_fold()
+
+	def do_arturn(self, arg):
+		"""arturn: (angle): turn right arm head by angle"""
 		try:
 			angle = float(arg)
 		except Exception:
 			print("Wrong arguments")
 			return
 
-		self.pico.arm_turn(angle)
+		self.pico.right_arm_turn(angle)
+
+	def do_aldeployed(self, arg):
+		"""Is left arm deployed ?"""
+		deployed = self.pico.left_arm_deployed()
+		print("Arm deployed" if deployed else "Arm not deployed (not necessarly folded)")
+
+	def do_alangles(self, arg):
+		"""Get left arm angles, deployed and turn in degrees"""
+		dep, turn = self.pico.left_arm_angles()
+		print(f"deploy:{dep}deg, turn:{turn}deg")
+
+	def do_aldeploy(self, arg):
+		"""Deploys the left arm"""
+		self.pico.left_arm_deploy()
+
+	def do_alfold(self, arg):
+		"""Folds the left arm in compact position"""
+		self.pico.left_arm_fold()
+
+	def do_alturn(self, arg):
+		"""alturn: (angle): turn left arm head by angle"""
+		try:
+			angle = float(arg)
+		except Exception:
+			print("Wrong arguments")
+			return
+
+		self.pico.left_arm_turn(angle)
 
 	def do_pump(self, arg):
 		try:

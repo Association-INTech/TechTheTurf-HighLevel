@@ -1,3 +1,6 @@
 __pycache__/
 .idea/
 venv/
+
+libAstar.so
+pathfinding/c_src/build/
