@@ -289,11 +289,17 @@ class Action(PicoBase):
 	def elev_pos(self):
 		return self.read_struct(1 | (4 << 4), "f")[0]
 
-	def arm_deployed(self):
+	def right_arm_deployed(self):
 		return self.read_struct(2 | (3 << 4), "?")[0]
 
-	def arm_angles(self):
+	def right_arm_angles(self):
 		return self.read_struct(2 | (4 << 4), "ff")
+
+	def left_arm_deployed(self):
+		return self.read_struct(3 | (3 << 4), "?")[0]
+
+	def left_arm_angles(self):
+		return self.read_struct(3 | (4 << 4), "ff")
 
 	# Write
 
@@ -310,17 +316,29 @@ class Action(PicoBase):
 		self.write_struct(1 | (2 << 4), "f", pos)
 
 	@block_cmd()
-	def arm_deploy(self):
+	def right_arm_deploy(self):
 		self.write_cmd(2 | (0 << 4))
 
 	@block_cmd()
-	def arm_fold(self):
+	def right_arm_fold(self):
 		self.write_cmd(2 | (1 << 4))
 
 	@block_cmd()
-	def arm_turn(self, angle):
+	def right_arm_turn(self, angle):
 		self.write_struct(2 | (2 << 4), "f", angle)
 
 	@block_cmd()
+	def left_arm_deploy(self):
+		self.write_cmd(3 | (0 << 4))
+
+	@block_cmd()
+	def left_arm_fold(self):
+		self.write_cmd(3 | (1 << 4))
+
+	@block_cmd()
+	def left_arm_turn(self, angle):
+		self.write_struct(3 | (2 << 4), "f", angle)
+
+	@block_cmd()
 	def pump_enable(self, pump_idx, state):
-		self.write_struct(3 | (pump_idx << 4), "?", state)
+		self.write_struct(4 | (pump_idx << 4), "?", state)

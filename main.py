@@ -10,7 +10,7 @@ import comm
 # :)
 LIDAR_ENABLE = False
 # Side
-BLUE_SIDE = False
+BLUE_SIDE = True
 # Only run on negative edge of jumper switch
 JUMPER_SAFE = False
 # Continues after the obstacle is no more
@@ -26,7 +26,7 @@ BORDER_SETUP_OFFSET = 30
 
 # ===========================
 # Physical constants
-TABLE_WIDTH = 1000
+TABLE_WIDTH = 2000
 TABLE_LENGTH = 3000
 
 ROBOT_WIDTH = 200
@@ -156,41 +156,60 @@ if LIDAR_ENABLE:
 asserv.start()
 action.start()
 
-action.arm_fold()
+action.right_arm_fold()
+action.left_arm_fold()
 
 try:
 	wait_for_jumper()
 	start_time = time.time()
 
+	x_dir = -1 if BLUE_SIDE else 1
+
 	#asserv.move(275-(ROBOT_LENGTH-ARM_OFFSET_TO_FRONT), 0)
-	asserv.move(215, 0)
+	asserv.move(-101 if BLUE_SIDE else 215, 0)
 	time.sleep(INST_WAIT)
 	for i in range(3):
-		action.arm_deploy()
+		action.right_arm_deploy()
 		time.sleep(INST_WAIT)
-		action.arm_turn(Y_DIR*90)
+		action.right_arm_turn(Y_DIR*90)
 		time.sleep(INST_WAIT)
-		action.arm_fold()
+		action.right_arm_fold()
 		time.sleep(INST_WAIT)
 
 		if i != 2:
-			asserv.move(220, 0)
+			asserv.move(x_dir*220, 0)
 			time.sleep(INST_WAIT)
 
+	asserv.move(0, math.radians(-90))
+	time.sleep(INST_WAIT)
+	asserv.move(ROBOT_WIDTH+325*2+450+155, 0)
+	time.sleep(INST_WAIT)
 	asserv.move(0, math.radians(Y_DIR*90))
 	time.sleep(INST_WAIT)
-	asserv.move(400-BORDER_SETUP_OFFSET, 0)
+	asserv.move(225*2+75, 0, blocking=False)
+	time.sleep(5)
+	"""
+	asserv.move(0, math.radians(Y_DIR*90))
 	time.sleep(INST_WAIT)
-	asserv.move(550, math.radians(-Y_DIR*90))
+	asserv.move(400-BORDER_SETUP_OFFSET-ROBOT_WIDTH, 0)
 	time.sleep(INST_WAIT)
-	asserv.move(600, math.radians(Y_DIR*90))
+	asserv.move(0, math.radians(-Y_DIR*90))
 	time.sleep(INST_WAIT)
-	move_abs(asserv, 10, 0)
+	asserv.move(500, 0)
 	time.sleep(INST_WAIT)
+	asserv.move(0, math.radians(Y_DIR*90))
+	time.sleep(INST_WAIT)
+	asserv.move(600, 0)
+	time.sleep(INST_WAIT)
+	move_abs(asserv, 0, 0)
+	time.sleep(INST_WAIT)
+	"""
+	#dst, theta = asserv.get_pos()
+	#asserv.move(-dst+40, 0)
 
-	left = MATCH_PLAY_TIME - (time.time()-start_time)
-	print(f"Finished, let's chill until the end, {left:.2f}s left")
-	time.sleep(left)
+	#left = MATCH_PLAY_TIME - (time.time()-start_time)
+	#print(f"Finished, let's chill until the end, {left:.2f}s left")
+	#time.sleep(left)
 
 finally:
 	print("Stopping everything")
