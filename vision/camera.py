@@ -6,15 +6,17 @@ from .aruco import detect, BOARD_TAGS, filter_table_tags
 import cv2
 import platform
 
-# MJPG_CODEC = cv2.VideoWriter_fourcc(*'MJPG')
-MJPG_CODEC = 1196444237  # Hardcoded value so that pycharm shuts the f@#k up
+MJPG_CODEC = cv2.VideoWriter_fourcc(*'MJPG')
+print('MJPG: ', MJPG_CODEC)
+# MJPG_CODEC = 1196444237  # Hardcoded value so that pycharm shuts the f@#k up
 # Pycharm can't find any documentation about VideoWriter_fourcc
 
 if platform.system() == 'Windows':
     from pygrabber.dshow_graph import FilterGraph
+    __g = FilterGraph()
 
     def get_available_cameras():
-        devices = FilterGraph().get_input_devices()
+        devices = __g.get_input_devices()
         return dict(map(lambda x: x[::-1], enumerate(devices)))
 
 else:
@@ -53,6 +55,9 @@ class Camera:
         self.ray_matrix = np.zeros((3, 3), float)
         self.make_ray_matrix()
 
+        # marker detection
+        self.detected = None
+
     @classmethod
     def find(cls) -> cv2.VideoCapture | None:
         cam_port = get_available_cameras().get(cls.name)
@@ -75,9 +80,10 @@ class Camera:
             return
         video_capture_settings = {
             cv2.CAP_PROP_ZOOM: self._zoom * self.global_zoom * 100.,
-            cv2.CAP_PROP_FOURCC: MJPG_CODEC,
             cv2.CAP_PROP_FRAME_WIDTH: self.width,
-            cv2.CAP_PROP_FRAME_HEIGHT: self.height
+            cv2.CAP_PROP_FRAME_HEIGHT: self.height,
+            cv2.CAP_PROP_FOURCC: MJPG_CODEC,
+            # cv2.CAP_PROP_FPS: 30.,
         }
         for key, value in video_capture_settings.items():
             self.stream.set(key, value)
@@ -118,21 +124,31 @@ class Camera:
             return False
         return self.stream.read(self.image)[0]
 
-    def reposition(self, img):
-        ids, rects = detect(img)
+    def detect(self, read=False):
+        if read:
+            self.read()
+        self.detected = detect(self.image)
+        return self.detected
+
+    def reposition(self, detect_markers=False, read=False):
+        if detect_markers or read:
+            self.detect(read)
+
+        ids, rects = self.detected
         ids = filter_table_tags(ids)
 
-        obj_points = np.concatenate(tuple(BOARD_TAGS[x - 20] for x in ids), axis=0)
-        img_points = np.concatenate(tuple(rects[ids[x]] for x in ids), axis=0)
-        self.screw[:] = opencv_save_my_ass(obj_points, img_points, self.get_opencv_camera_matrix())
-        self.make_transformation_matrix()
+        if ids:
+            obj_points = np.concatenate(tuple(BOARD_TAGS[x - 20] for x, _ in ids), axis=0)
+            img_points = np.concatenate(tuple(rects[x] for _, x in ids), axis=0)
+            self.screw[:] = opencv_save_my_ass(obj_points, img_points, self.get_opencv_camera_matrix())
+            self.make_transformation_matrix()
 
     def to_real_world(self, sc_points, plane_normal=Z, plane_point=(0., 0., 0.)):
         """
         take points from the screen that belong to a known real-world plane and compute their real position
         """
         rays = mat_x(self.transformation_matrix[:3, :3].T, screen_to_ray(self.ray_matrix, sc_points))
-        return self.screw + rays * dot(plane_point - self.screw[:, 0], plane_normal) / dot(rays, plane_normal)
+        return self.screw[:, 0] + rays * (dot(plane_point - self.screw[:, 0], plane_normal) / dot(rays, plane_normal))[..., None]
 
 
 class HDProWebcamC920(Camera):
@@ -148,11 +164,11 @@ class LogitechWebcamC930e(Camera):
     _kx = 237 / 390
     _ky = 16/9 * _kx
 
-    _zoom = 1.26
-    # 1.26 is an equalizer, both camera now have the same f.o.v.
-    # Zoom calculation details:
-    # both cameras face to a wall, distance was 2.37 m
-    # project the f.o.v. on the wall, measure the width
-    # C920:  3.10 m
-    # C930e: 3.90 m
-    # 3.90 / 3.10 ~ 1.26
+    # _zoom = 1.26
+    # # 1.26 is an equalizer, both camera now have the same f.o.v.
+    # # Zoom calculation details:
+    # # both cameras face to a wall, distance was 2.37 m
+    # # project the f.o.v. on the wall, measure the width
+    # # C920:  3.10 m
+    # # C930e: 3.90 m
+    # # 3.90 / 3.10 ~ 1.26

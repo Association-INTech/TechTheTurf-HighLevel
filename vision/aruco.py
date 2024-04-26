@@ -23,17 +23,27 @@ def detect(frame):
     Detects aruco markers on an image
 
     :param frame: image to analyse
-    :return: dict(Tag_ids: rectangle_index), np.ndarray[rectangle_index, 4, xy]
+    :return: tuple[Tag_ids], np.ndarray[rectangle_index, 4, xy]
     """
     corners, ids, _ = detector.detectMarkers(frame)
-    return ({}, np.array(())) if ids is None else (
-        dict((i, index) for index, (i,) in enumerate(ids)),
+    return ((), np.array(())) if ids is None else (
+        tuple((i, index) for index, (i,) in enumerate(ids)),
         np.array(corners)[:, 0, :, :]
     )
 
 
-def filter_table_tags(marker_ids: dict[int, int]) -> dict[int, int]:
-    return {key: value for key, value in marker_ids.items() if 0 <= key - 20 < 4}
+def filter_table_tags(marker_ids: tuple[tuple[int, int], ...]) -> tuple[tuple[int, int], ...]:
+    return tuple(filter(lambda x: 0 <= x[0] - 20 < 4, marker_ids))
+
+
+def group_by_marker_id(markers: tuple[tuple[int, int], ...]) -> dict[int, list[int]]:
+    result = {}
+    for marker_id, index in markers:
+        if marker_id not in result:
+            result[marker_id] = [index]
+        else:
+            result[marker_id].append(index)
+    return result
 
 
 """

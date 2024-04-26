@@ -208,7 +208,7 @@ def mixt(v0, v1, v2):
 
 def sc_intersection(sc_points):
     v0, v1, v2 = sc_points[2] - sc_points[0], sc_points[1] - sc_points[0], sc_points[3] - sc_points[2]
-    k1 = det(v2, v0) / det(v2, v1)
+    k1 = (det(v2, v0) / det(v2, v1))[..., None]
     # is computed point on the second line
     # assert np.all(np.abs(det(sc_points[0] + v1 * k1 - sc_points[2], v2)) < 1e-9)
     return sc_points[0] + v1 * k1
