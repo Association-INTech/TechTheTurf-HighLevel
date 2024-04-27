@@ -125,6 +125,8 @@ def draw_display(disp, asserv, action, score=None, debug=False):
 		run = asserv.running
 		state = asserv.debug_get_controller_state()
 		rd, ld = action.right_arm_deployed(), action.left_arm_deployed()
+		lvel, lcurr, ltemp, lvbus = asserv.debug_get_right_bg_stats()
+		rvel, rcurr, rtemp, rvbus = asserv.debug_get_right_bg_stats()
 
 		theta %= (1 if theta >= 0 else -1)*2*math.pi
 
@@ -168,8 +170,20 @@ def draw_display(disp, asserv, action, score=None, debug=False):
 		disp.cursor_pos = (1, 0)
 		disp.write_string(linest)
 
-	if score is not None:
+		linest = f"{int(ltemp)}C"
+		linest = linest.ljust(5)
+		linest += f"{int(abs(lvbus*lcurr))}W"
+		linest = linest.ljust(10)
+		linest += f"{int(abs(rvbus*rcurr))}W"
+		linest = linest.ljust(15)
+		linest += f"{int(rtemp)}C"
+		linest = linest.ljust(20)
+
 		disp.cursor_pos = (2, 0)
+		disp.write_string(linest)
+
+	if score is not None:
+		disp.cursor_pos = (3, 0)
 		disp.write_string(f"Score: {score}".ljust(20))
 
 def display_thread(disp, asserv, action):

@@ -295,6 +295,12 @@ class Asserv(PicoBase):
 	def debug_get_controller_state(self):
 		return self.read_struct(11 | (4 << 4), "B")[0]
 
+	def debug_get_left_bg_stats(self):
+		return self.read_struct(11 | (5 << 4), "ffff")
+
+	def debug_get_right_bg_stats(self):
+		return self.read_struct(11 | (6 << 4), "ffff")
+
 # Class for the pico that handles actuators
 
 class Action(PicoBase):

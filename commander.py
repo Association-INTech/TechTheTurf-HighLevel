@@ -238,6 +238,13 @@ class AsservCommander(BaseCommander):
 		state = ["Reaching Theta", "Reaching Dst", "Reached target"][state]
 		print(f"State: {state}")
 
+	def do_dbg(self, arg):
+		"""debug cmd: dbg prints the debug info for each bg"""
+		vel, curr, temp, vbus = self.pico.debug_get_left_bg_stats()
+		print(f"Left  BG: {vel:.2f}rad/s, {curr:.2f}A, {vbus:.2f}V, {temp:.2f}°C")
+		vel, curr, temp, vbus = self.pico.debug_get_right_bg_stats()
+		print(f"Right BG: {vel:.2f}rad/s, {curr:.2f}A, {vbus:.2f}V, {temp:.2f}°C")
+
 	def do_estop(self, arg):
 		"""estop: sends an emergency stop"""
 		self.pico.emergency_stop()
