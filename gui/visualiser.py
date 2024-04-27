@@ -73,13 +73,20 @@ class Robot:
 		return self.patch_rect, self.patch_xarrow, self.patch_yarrow
 
 class Visualiser:
-	def __init__(self, robot, pamis=[], fps=60):
+	def __init__(self, robot, pamis=[], fps=60, on_click=None):
 		self.fps = fps
 		self.fig, self.ax = plt.subplots()
 		self.plants = np.array([])
 		self.robot = robot
 		self.pamis = pamis
 		self.plant_scatter = None
+
+		self.on_click = on_click
+		self.fig.canvas.mpl_connect("button_press_event", self._on_click)
+
+	def _on_click(self, event):
+		if self.on_click is not None:
+			self.on_click(event)
 
 	def update_func(self, frame):
 		plots = [self.plant_scatter]
@@ -92,6 +99,7 @@ class Visualiser:
 	def start(self):
 		impath = pathlib.Path(__file__).parent.resolve()/"table.png"
 		img = plt.imread(impath)
+
 		self.fig.set_layout_engine("tight")
 		self.ax.imshow(img, extent=[0, TABLE_LENGTH, 0, TABLE_WIDTH], alpha=0.6)
 		self.plant_scatter = self.ax.scatter(self.plants.T[0], self.plants.T[1], s=50, c="green")

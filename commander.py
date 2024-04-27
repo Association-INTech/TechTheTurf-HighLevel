@@ -255,23 +255,7 @@ class AsservCommander(BaseCommander):
 
 		tx, ty = map(float,arg.split())
 
-		dst, theta = self.pico.get_pos()
-		cx, cy = self.pico.get_pos_xy()
-		dx = tx - cx
-		dy = ty - cy
-
-		deltaTheta = (math.atan2(dy, dx)-theta)
-		deltaDst = math.sqrt(dx * dx + dy * dy)
-
-		sign = 1 if deltaTheta > 0 else -1
-
-		deltaTheta %= sign*2*math.pi
-
-		if abs(deltaTheta) > math.pi:
-			deltaTheta = deltaTheta - sign*2*math.pi
-
-		print(f"Moving {deltaTheta}rads, {deltaDst}mm")
-		self.pico.move(deltaDst, deltaTheta)
+		self.pico.move_abs(tx, ty)
 
 	def do_sq(self, arg):
 		"""sq (side length)"""

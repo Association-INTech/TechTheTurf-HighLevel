@@ -17,3 +17,6 @@ pygrabber>=0.2
 
 # Metacomm
 paho-mqtt
+
+# LCD Display
+rplcd

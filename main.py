@@ -2,6 +2,7 @@ import time, math
 import RPi.GPIO as GPIO
 import hokuyolx, threading
 import numpy as np
+from RPLCD.i2c import CharLCD
 
 import comm
 
@@ -12,7 +13,7 @@ LIDAR_ENABLE = False
 # Side
 BLUE_SIDE = True
 # Only run on negative edge of jumper switch
-JUMPER_SAFE = False
+JUMPER_SAFE = True
 # Continues after the obstacle is no more
 RESTART_AFTER_OBS_CLEAR = False
 # Pretty self explanatory
@@ -32,9 +33,8 @@ TABLE_LENGTH = 3000
 ROBOT_WIDTH = 200
 ROBOT_LENGTH = 350
 ENCODER_OFFSET_TO_FRONT = 145
-LIDAR_OFFSET_TO_FRONT = 125
+LIDAR_OFFSET_TO_FRONT = 145
 ARM_OFFSET_TO_FRONT = 135.5
-
 
 # Electrical constants
 JUMPER_PIN = 22
@@ -118,24 +118,68 @@ def lidar_thread(pico, lidar_ready):
 		except Exception as e:
 			print(f"Lidar thread Exception: {e}")
 
-def move_abs(pico, tx, ty):
-	dst, theta = pico.get_pos()
-	cx, cy = pico.get_pos_xy()
-	dx = tx - cx
-	dy = ty - cy
+def draw_display(disp, asserv, action, score=None, debug=False):
+	if debug:
+		dst, theta = asserv.get_pos()
+		x,y = asserv.get_pos_xy()
+		run = asserv.running
+		state = asserv.debug_get_controller_state()
+		rd, ld = action.right_arm_deployed(), action.left_arm_deployed()
 
-	theta %= 2*math.pi
+		theta %= (1 if theta >= 0 else -1)*2*math.pi
 
-	deltaTheta = (math.atan2(dy, dx)-theta)%(2*math.pi)
-	deltaDst = math.sqrt(dx * dx + dy * dy)
+		disp.cursor_pos = (0, 0)
+		linest = f"{int(x)}"
+		linest = linest.ljust(6)
+		linest += f"{int(y)}"
+		linest = linest.ljust(6*2)
+		linest += f"{int(math.degrees(theta))}"
+		linest = linest.ljust(20)
+		disp.write_string(linest)
 
-	if deltaTheta > math.pi:
-		deltaTheta = 2*math.pi - deltaTheta
-	elif deltaTheta < -math.pi:
-		deltaTheta = 2*math.pi + deltaTheta
+		if run:
+			if state == 0:
+				linest = "THETA"
+			elif state == 1:
+				linest = "DST"
+			else:
+				linest = "REACH"
+		else:
+			linest = "OFF"
+		linest = linest.ljust(6)
 
-	print(f"Moving {deltaTheta}rads, {deltaDst}mm")
-	pico.move(deltaDst, deltaTheta)
+		if not GPIO.input(JUMPER_PIN):
+			linest += "IN"
+		else:
+			linest += "OUT"
+		linest = linest.ljust(10)
+
+		if ld:
+			linest += "DEP"
+		else:
+			linest += "FLD"
+		linest = linest.ljust(14)
+
+		if rd:
+			linest += "DEP"
+		else:
+			linest += "FLD"
+		linest = linest.ljust(20)
+		disp.cursor_pos = (1, 0)
+		disp.write_string(linest)
+
+	if score is not None:
+		disp.cursor_pos = (2, 0)
+		disp.write_string(f"Score: {score}".ljust(20))
+
+def display_thread(disp, asserv, action):
+	while True:
+		draw_display(disp, asserv, action, debug=True)
+		time.sleep(1/10.0)
+
+# Init. LCD
+display = CharLCD(i2c_expander='PCF8574', address=0x3f, port=1, cols=20, rows=4, dotsize=8)
+display.clear()
 
 # Example scenario
 
@@ -143,6 +187,9 @@ print(f"Running {'Blue' if BLUE_SIDE else 'Yellow'} side scenario.")
 
 asserv = comm.make_asserv()
 action = comm.make_action()
+
+display_thread = threading.Thread(target=display_thread, args=(display, asserv, action), daemon=True)
+display_thread.start()
 
 if LIDAR_ENABLE:
 	lidar_ready = threading.Event()
@@ -201,7 +248,7 @@ try:
 	time.sleep(INST_WAIT)
 	asserv.move(600, 0)
 	time.sleep(INST_WAIT)
-	move_abs(asserv, 0, 0)
+	asserv.move_abs(asserv, 0, 0)
 	time.sleep(INST_WAIT)
 	"""
 	#dst, theta = asserv.get_pos()
