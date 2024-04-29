@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.patches as patches
 import numpy as np
-import matplotlib, pathlib
+import matplotlib, pathlib, time
 
 # Faster live plot
 matplotlib.use('Qt5Agg')
@@ -11,9 +11,10 @@ TABLE_WIDTH = 2000
 TABLE_LENGTH = 3000
 
 class Robot:
-	def __init__(self, width, height, color="#0000FF"):
+	def __init__(self, width, height, rotationx_offset=0, color="#0000FF"):
 		self.width = width
-		self.height = height
+		self.length = height
+		self.rotationx_offset = rotationx_offset
 		self.x = 0
 		self.y = 0
 		self.theta = 0
@@ -25,7 +26,7 @@ class Robot:
 
 	@classmethod
 	def create_main(cls, initalx, initaly, initaltheta=0):
-		inst = cls(350, 200, "#3434C6")
+		inst = cls(350, 200, (200/2)-145, "#3434C6")
 		inst.x = initalx
 		inst.y = initaly
 		inst.theta = initaltheta
@@ -33,7 +34,7 @@ class Robot:
 
 	@classmethod
 	def create_pami(cls, initalx, initaly, initaltheta=0):
-		inst = cls(150, 150, "#F5FF54")
+		inst = cls(150, 150, 0, "#F5FF54")
 		inst.x = initalx
 		inst.y = initaly
 		inst.theta = initaltheta
@@ -48,19 +49,19 @@ class Robot:
 		return np.pi/2+self.theta
 
 	def _calc_xy_rect(self):
-		return (self.x-self.width/2, self.y-self.height/2)
+		return (self.x-self.width/2, self.y-self.length/2)
 
 	def _calc_dx_arrow(self, angle_offset=0):
-		return (self.height/3)*np.cos(self.get_angle()-(np.pi/2)+angle_offset)
+		return (self.length/3)*np.cos(self.get_angle()-(np.pi/2)+angle_offset)
 
 	def _calc_dy_arrow(self, angle_offset=0):
-		return (self.height/3)*np.sin(self.get_angle()-(np.pi/2)+angle_offset)
+		return (self.length/3)*np.sin(self.get_angle()-(np.pi/2)+angle_offset)
 
 	def bind(self, axis):
-		self.patch_rect = patches.Rectangle(self._calc_xy_rect(), self.width, self.height,
+		self.patch_rect = patches.Rectangle(self._calc_xy_rect(), self.width, self.length,
 							angle=np.degrees(self.get_angle()), rotation_point="center", fill=True, edgecolor="black", facecolor=self.color)
-		self.patch_xarrow = patches.FancyArrow(self.x, self.y, self._calc_dx_arrow(), self._calc_dy_arrow(), color="red", width=self.height/40)
-		self.patch_yarrow = patches.FancyArrow(self.x, self.y, self._calc_dx_arrow(np.pi/2), self._calc_dy_arrow(np.pi/2), color="lime", width=self.height/40)
+		self.patch_xarrow = patches.FancyArrow(self.x, self.y, self._calc_dx_arrow(), self._calc_dy_arrow(), color="red", width=self.length/40)
+		self.patch_yarrow = patches.FancyArrow(self.x, self.y, self._calc_dx_arrow(np.pi/2), self._calc_dy_arrow(np.pi/2), color="lime", width=self.length/40)
 		axis.add_patch(self.patch_rect)
 		axis.add_patch(self.patch_xarrow)
 		axis.add_patch(self.patch_yarrow)
@@ -90,6 +91,7 @@ class Visualiser:
 
 	def update_func(self, frame):
 		plots = [self.plant_scatter]
+		self.robot.theta = time.time()
 		self.plant_scatter.set_offsets(self.plants)
 		plots.extend(self.robot.update_patch())
 		for pami in self.pamis:

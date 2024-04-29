@@ -1,9 +1,10 @@
 import math
 import cmd
 import time
-import sys
+import argparse
 
 import comm
+import handlers
 
 def str_to_bool(val):
 	val = val.strip().lower()
@@ -441,10 +442,27 @@ class ActionCommander(BaseCommander):
 
 if __name__ == "__main__":
 	# Build the right commander
-	if len(sys.argv) > 1 and sys.argv[1] == "a":
-		commander = ActionCommander(comm.make_action())
+	parser = argparse.ArgumentParser(prog='Commander',
+			description='Debug tool to talk to the picos')
+
+	parser.add_argument('-a', '--action', action='store_true', help='Run the action pico commander')
+	parser.add_argument('-d', '--debug', action='store_true', help='Enables the screen debug')
+
+	args = parser.parse_args()
+
+	action = None
+	asserv = None
+
+	if args.action:
+		action = comm.make_action()
+		commander = ActionCommander(action)
 	else:
-		commander = AsservCommander(comm.make_asserv())
+		asserv = comm.make_asserv()
+		commander = AsservCommander(asserv)
+
+	if args.debug:
+		scr_handler = handlers.DisplayHandler(action=action, asserv=asserv)
+		scr_handler.start()
 
 	# Run the cmd loop
 	try:
