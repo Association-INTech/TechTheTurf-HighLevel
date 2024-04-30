@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import struct
 import time
+import math
 import threading
 
 from . import telemetry
@@ -222,6 +223,25 @@ class Asserv(PicoBase):
 	def move(self, rho, theta):
 		self.write_struct(1, "ff", rho, theta)
 
+	def move_abs(self, tx, ty):
+		dst, theta = self.get_pos()
+		cx, cy = self.get_pos_xy()
+		dx = tx - cx
+		dy = ty - cy
+
+		deltaTheta = (math.atan2(dy, dx)-theta)
+		deltaDst = math.sqrt(dx * dx + dy * dy)
+
+		sign = 1 if deltaTheta > 0 else -1
+
+		deltaTheta %= sign*2*math.pi
+
+		if abs(deltaTheta) > math.pi:
+			deltaTheta = deltaTheta - sign*2*math.pi
+
+		#print(f"Moving {deltaTheta}rads, {deltaDst}mm")
+		self.move(deltaDst, deltaTheta)
+
 	def emergency_stop(self):
 		self.write_cmd(0 | (1 << 4))
 
@@ -275,6 +295,12 @@ class Asserv(PicoBase):
 	def debug_get_controller_state(self):
 		return self.read_struct(11 | (4 << 4), "B")[0]
 
+	def debug_get_left_bg_stats(self):
+		return self.read_struct(11 | (5 << 4), "ffff")
+
+	def debug_get_right_bg_stats(self):
+		return self.read_struct(11 | (6 << 4), "ffff")
+
 # Class for the pico that handles actuators
 
 class Action(PicoBase):
@@ -289,11 +315,17 @@ class Action(PicoBase):
 	def elev_pos(self):
 		return self.read_struct(1 | (4 << 4), "f")[0]
 
-	def arm_deployed(self):
+	def right_arm_deployed(self):
 		return self.read_struct(2 | (3 << 4), "?")[0]
 
-	def arm_angles(self):
+	def right_arm_angles(self):
 		return self.read_struct(2 | (4 << 4), "ff")
+
+	def left_arm_deployed(self):
+		return self.read_struct(3 | (3 << 4), "?")[0]
+
+	def left_arm_angles(self):
+		return self.read_struct(3 | (4 << 4), "ff")
 
 	# Write
 
@@ -310,17 +342,29 @@ class Action(PicoBase):
 		self.write_struct(1 | (2 << 4), "f", pos)
 
 	@block_cmd()
-	def arm_deploy(self):
+	def right_arm_deploy(self):
 		self.write_cmd(2 | (0 << 4))
 
 	@block_cmd()
-	def arm_fold(self):
+	def right_arm_fold(self):
 		self.write_cmd(2 | (1 << 4))
 
 	@block_cmd()
-	def arm_turn(self, angle):
+	def right_arm_turn(self, angle):
 		self.write_struct(2 | (2 << 4), "f", angle)
 
 	@block_cmd()
+	def left_arm_deploy(self):
+		self.write_cmd(3 | (0 << 4))
+
+	@block_cmd()
+	def left_arm_fold(self):
+		self.write_cmd(3 | (1 << 4))
+
+	@block_cmd()
+	def left_arm_turn(self, angle):
+		self.write_struct(3 | (2 << 4), "f", angle)
+
+	@block_cmd()
 	def pump_enable(self, pump_idx, state):
-		self.write_struct(3 | (pump_idx << 4), "?", state)
+		self.write_struct(4 | (pump_idx << 4), "?", state)

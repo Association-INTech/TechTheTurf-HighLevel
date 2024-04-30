@@ -3,7 +3,7 @@ import os
 import cv2
 import numpy as np
 from .geometry import find_camera_position, render_multi_cam_cached_matrices, opencv_save_my_ass
-from .aruco import BOARD_TAGS, detect, get_point_indices
+from .aruco import BOARD_TAGS, detect, get_point_indices, filter_table_tags
 from .camera import HDProWebcamC920, LogitechWebcamC930e
 from .combinations import COMBINATIONS
 
@@ -42,14 +42,15 @@ def shift_position(cnt):
     vid.read(img_buffer)
 
     ids, rects = detect(img_buffer)
-    table_markers = {x: ids[x] for x in ids if 0 <= x - 20 < 4}
+    table_markers = filter_table_tags(ids)
+    # table_markers = {x: ids[x] for x in ids if 0 <= x - 20 < 4}
 
-    table_situation = sum(1 << (x - 20) for x in table_markers)
+    table_situation = sum(1 << (x - 20) for x, _ in table_markers)
     combination[:] = COMBINATIONS[table_situation]
     if len(combination):
         camera = cameras[context[VIDEO_INDEX]]
-        obj_points = np.concatenate(tuple(BOARD_TAGS[x - 20] for x in table_markers), axis=0)
-        img_points = np.concatenate(tuple(rects[ids[x]] for x in table_markers), axis=0)
+        obj_points = np.concatenate(tuple(BOARD_TAGS[x - 20] for x, _ in table_markers), axis=0)
+        img_points = np.concatenate(tuple(rects[x] for _, x in table_markers), axis=0)
         camera.screw[:] = opencv_save_my_ass(obj_points, img_points, camera.get_opencv_camera_matrix())
         camera.make_transformation_matrix()
         rendered = render_multi_cam_cached_matrices(camera.transformation_matrix[None, ...], camera.projection_matrix[None, ...], BOARD_TAGS)
@@ -58,7 +59,7 @@ def shift_position(cnt):
         points = get_point_indices(combination[context[COMBINATION_INDEX] % len(combination)])
         x, y = zip(*points)
         tags = BOARD_TAGS[list(x), list(y)]
-        x, y = list(map(lambda _x: table_markers[_x+20], x)), list(y)
+        x, y = list(map(lambda _x: dict(table_markers)[_x+20], x)), list(y)
         circles = np.int32(rects[x, y])
 
         # chosen point to solve camera position
