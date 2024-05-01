@@ -6,8 +6,8 @@ import argparse
 import paho.mqtt.client as mqtt
 
 class Utilisateur():
-    def __init__(self, f_rappel):
-        self.nom = f"anon_{time.time():0.0f}"
+    def __init__(self, f_rappel=print, identifiant="", motdepasse="", ip_serveur_mqtt="127.0.0.1", sujets = ["toptoptopictropipal"]):
+        self.nom = f"anon_{time.time():0.0f}" if identifiant=="" else identifiant
         format = "%(asctime)s: %(message)s"
         logging.basicConfig(format=format,
                             level=logging.DEBUG,
@@ -16,8 +16,11 @@ class Utilisateur():
         self.mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.mqttc.on_message = self.on_message
         self.mqttc.on_connect = self.on_connect
-        self.mqttc.connect("127.0.0.1", 1883, 60)
+        self.mqttc.username = identifiant
+        self.mqttc.password = motdepasse
+        self.mqttc.connect(ip_serveur_mqtt, 1883, 60)
         self.rappel = f_rappel
+        self.sujets = sujets
     def on_message(self, client, userdata, msg):
         self.rappel(client, msg)
         self.journaliseur.info(msg.topic+" "+str(msg.payload))
@@ -25,7 +28,8 @@ class Utilisateur():
         self.journaliseur.info(f"Connected with result code {reason_code}")
         # Subscribing in on_connect() means that if we lose the connection and
         # reconnect then subscriptions will be renewed.
-        client.subscribe("toptoptopictropipal")
+        for sujet in self.sujets:
+            client.subscribe(sujet)
     def message(self, topic="toptoptopictropipal"):
         self.journaliseur.info(self.mqttc.publish(topic, f"{self.nom} : chalut chat va la pêche ?"))
     def fil(self):
@@ -33,14 +37,11 @@ class Utilisateur():
     def coupe_fil(self):
         self.mqttc.loop_stop()
 class Poulet(Utilisateur):
-    def __init__(self):
-        Utilisateur.__init__(self)
-        self.nom = "POULET"
-
+    def __init__(self, f_rappel=print, identifiant = "POULET", motdepasse = "4444719", ip_serveur_mqtt="127.0.0.1", sujets = ["toptoptopictropipal"]):
+        Utilisateur.__init__(self, f_rappel, identifiant, motdepasse, ip_serveur_mqtt, sujets)
 class Nuke(Utilisateur):
-    def __init__(self):
-        Utilisateur.__init__(self)
-        self.nom = "NUKE"
+    def __init__(self, f_rappel=print, identifiant = "NUKE", motdepasse = "mespronomssontla/elle", ip_serveur_mqtt="127.0.0.1", sujets = ["toptoptopictropipal"]):
+        Utilisateur.__init__(self, f_rappel, identifiant, motdepasse, ip_serveur_mqtt, sujets)
 def main(u):
     ut = Poulet() if u == "POULET" else Nuke()
     format = "%(asctime)s: %(message)s"
@@ -48,15 +49,9 @@ def main(u):
                         level=logging.DEBUG,
                         datefmt="%H:%M:%S")
     ut.fil()
-    #mqttc.on_log = logging.info
-#    mqttc.enable_logger(journaliseur)
-    # mqttc.connect("mqtt.eclipseprojects.io", 1883, 60)
-
-    # Blocking call that processes network traffic, dispatches callbacks and
-    # handles reconnecting.
-    # Other loop*() functions are available that give a threaded interface and a
-    # manual interface.
-        # ut.message()
+    while True:
+        ut.message()
+        time.sleep(1)
 if __name__ == "__main__":
     annuaire = ["NUKE", "POULET", "pamisérable"]
     argumentateur = argparse.ArgumentParser(
