@@ -1,7 +1,12 @@
 import RPi.GPIO as GPIO
-import hokuyolx, threading, time
+import threading, time
 import numpy as np
-from RPLCD.i2c import CharLCD
+try:
+	import hokuyolx
+	from RPLCD.i2c import CharLCD
+except Exception:
+	# Running on pami
+	pass
 
 # General constants
 MATCH_PLAY_TIME = 100
@@ -54,10 +59,11 @@ class JumperStart:
 		print("Starting")
 
 class LidarHandler:
-	def __init__(self, width, length, radius, pos_func, detected_func, cleared_func=None):
+	def __init__(self, width, length, radius, margin, pos_func, detected_func, cleared_func=None):
 		self.width = width
 		self.length = length
 		self.radius = radius
+		self.margin = margin
 		self.pos_func = pos_func
 		self.detected_func = detected_func
 		self.cleared_func = cleared_func
@@ -93,17 +99,19 @@ class LidarHandler:
 					self.ready.set()
 
 				detected = None
-				for ang, dst in dsts[50:-50]:
+				for ang, dst in dsts:
+					if abs(ang) > np.radians(45):
+						continue
 					px = x + dst*np.cos(theta+ang)
 					py = y + dst*np.sin(theta+ang)
 
-					if px < 0 or px > self.length or py < 0 or py > self.width:
+					if px < self.margin or px > self.length-self.margin or py < self.margin or py > self.width-self.margin:
 						continue
 
 					if dst > self.radius:
 						continue
 
-					detected = dst,px,py
+					detected = dst,ang,px,py
 					break
 
 				#print(x,y,theta)
@@ -118,11 +126,12 @@ class LidarHandler:
 				print(f"Lidar thread Exception: {e}")
 
 class DisplayHandler:
-	def __init__(self, addr=LCD_ADDR, cols=LCD_COLS, rows=LCD_ROWS, rate=10, asserv=None, action=None, jumper=None):
+	def __init__(self, addr=LCD_ADDR, cols=LCD_COLS, rows=LCD_ROWS, rate=10, asserv=None, action=None, jumper=None, debug=False):
 		self.rate = rate
 		self.asserv = asserv
 		self.action = action
 		self.jumper = jumper
+		self.debug = debug
 		self.score = 0
 
 		# Init. LCD
@@ -155,75 +164,76 @@ class DisplayHandler:
 		return self.score
 
 	def draw_display(self):
-		if self.asserv is not None:
-			dst, theta = self.asserv.get_pos()
-			x,y = self.asserv.get_pos_xy()
-			theta %= (1 if theta >= 0 else -1)*2*np.pi
+		if self.debug:
+			if self.asserv is not None:
+				dst, theta = self.asserv.get_pos()
+				x,y = self.asserv.get_pos_xy()
+				theta %= (1 if theta >= 0 else -1)*2*np.pi
 
-			linest = f"{int(x)}"
-			linest = linest.ljust(6)
-			linest += f"{int(y)}"
-			linest = linest.ljust(6*2)
-			linest += f"{int(np.degrees(theta))}"
-			linest = linest.ljust(20)
-			self.disp.cursor_pos = (0, 0)
-			self.disp.write_string(linest)
+				linest = f"{int(x)}"
+				linest = linest.ljust(6)
+				linest += f"{int(y)}"
+				linest = linest.ljust(6*2)
+				linest += f"{int(np.degrees(theta))}"
+				linest = linest.ljust(20)
+				self.disp.cursor_pos = (0, 0)
+				self.disp.write_string(linest)
 
-		linest = ""
+			linest = ""
 
-		if self.asserv is not None:
-			run = self.asserv.running
-			state = self.asserv.debug_get_controller_state()
-			if run:
-				if state == 0:
-					linest += "THETA"
-				elif state == 1:
-					linest += "DST"
+			if self.asserv is not None:
+				run = self.asserv.running
+				state = self.asserv.debug_get_controller_state()
+				if run:
+					if state == 0:
+						linest += "THETA"
+					elif state == 1:
+						linest += "DST"
+					else:
+						linest += "REACH"
 				else:
-					linest += "REACH"
-			else:
-				linest += "OFF"
+					linest += "OFF"
 
-		if self.jumper is not None:
-			linest = linest.ljust(6)
-			if self.jumper.state():
-				linest += "IN"
-			else:
-				linest += "OUT"
+			if self.jumper is not None:
+				linest = linest.ljust(6)
+				if self.jumper.state():
+					linest += "IN"
+				else:
+					linest += "OUT"
 
-		if self.action is not None:
-			linest = linest.ljust(10)
-			rd, ld = self.action.right_arm_deployed(), self.action.left_arm_deployed()
-			if ld:
-				linest += "DEP"
-			else:
-				linest += "FLD"
-			linest = linest.ljust(14)
+			if self.action is not None:
+				linest = linest.ljust(10)
+				rd, ld = self.action.right_arm_deployed(), self.action.left_arm_deployed()
+				if ld:
+					linest += "DEP"
+				else:
+					linest += "FLD"
+				linest = linest.ljust(14)
 
-			if rd:
-				linest += "DEP"
-			else:
-				linest += "FLD"
-		
-		if self.action is not None or self.asserv is not None or self.jumper is not None:
-			linest = linest.ljust(20)
-			self.disp.cursor_pos = (1, 0)
-			self.disp.write_string(linest)
+				if rd:
+					linest += "DEP"
+				else:
+					linest += "FLD"
 
-		if self.asserv is not None:
-			lvel, lcurr, ltemp, lvbus = self.asserv.debug_get_left_bg_stats()
-			rvel, rcurr, rtemp, rvbus = self.asserv.debug_get_right_bg_stats()
-			linest = f"{int(ltemp)}C"
-			linest = linest.ljust(5)
-			linest += f"{lcurr:.1f}A"
-			linest = linest.ljust(10)
-			linest += f"{rcurr:.1f}A"
-			linest = linest.ljust(15)
-			linest += f"{int(rtemp)}C"
-			linest = linest.ljust(20)
+			if self.action is not None or self.asserv is not None or self.jumper is not None:
+				linest = linest.ljust(20)
+				self.disp.cursor_pos = (1, 0)
+				self.disp.write_string(linest)
 
-			self.disp.cursor_pos = (2, 0)
-			self.disp.write_string(linest)
+			if self.asserv is not None:
+				lvel, lcurr, ltemp, lvbus = self.asserv.debug_get_left_bg_stats()
+				rvel, rcurr, rtemp, rvbus = self.asserv.debug_get_right_bg_stats()
+				linest = f"{int(ltemp)}C"
+				linest = linest.ljust(5)
+				linest += f"{lcurr:.1f}A"
+				linest = linest.ljust(10)
+				linest += f"{rcurr:.1f}A"
+				linest = linest.ljust(15)
+				linest += f"{int(rtemp)}C"
+				linest = linest.ljust(20)
+
+				self.disp.cursor_pos = (2, 0)
+				self.disp.write_string(linest)
 
 		self.disp.cursor_pos = (3, 0)
 		self.disp.write_string(f"     Score: {self.score}".ljust(20))
@@ -247,7 +257,7 @@ def inst(func):
 	return inner
 
 class Scenario:
-	def __init__(self, asserv, action, start_x, start_y, start_theta, inst_wait=0, jumper_safe=True, lidar_enable=True, lidar_restart=False, lidar_radius=300):
+	def __init__(self, asserv, action, start_x, start_y, start_theta, inst_wait=0, jumper_safe=True, lidar_enable=True, lidar_restart=False, lidar_radius=300, lidar_margin=10):
 		self.asserv = asserv
 		self.action = action
 
@@ -258,7 +268,7 @@ class Scenario:
 		self.inst_wait = inst_wait
 
 		self.jumper = JumperStart(safe=jumper_safe)
-		self.lidar = LidarHandler(TABLE_WIDTH, TABLE_LENGTH, lidar_radius, lambda: self.get_pos(LIDAR_OFFSET_TO_FRONT - ENCODER_OFFSET_TO_FRONT),
+		self.lidar = LidarHandler(TABLE_WIDTH, TABLE_LENGTH, lidar_radius, lidar_margin, lambda: self.get_pos(LIDAR_OFFSET_TO_FRONT - ENCODER_OFFSET_TO_FRONT),
 								self.lidar_detect, self.lidar_cleared) if lidar_enable else None
 		self.disp = DisplayHandler(asserv=self.asserv, action=self.action, jumper=self.jumper)
 
@@ -337,8 +347,8 @@ class Scenario:
 	def play(self):
 		raise NotImplementedError("Scenario needs a play method")
 
-	def lidar_detect(self, dst, x, y):
-		print(f"Obs {x}, {y}, {dst}")
+	def lidar_detect(self, dst, theta, x, y):
+		print(f"Obs {x}, {y}, {dst} {np.degrees(theta)}")
 		if self.started:
 			self.asserv.notify_stop()
 

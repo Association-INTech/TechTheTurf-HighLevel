@@ -1,23 +1,25 @@
-import time, math
+import time, math, socket
 import handlers
 import comm
 
 # ======== Settings ========
 
 # :)
-LIDAR_ENABLE = True
+LIDAR_ENABLE = False
 # Side
 BLUE_SIDE = True
 # Only run on negative edge of jumper switch
-JUMPER_SAFE = True
+JUMPER_SAFE = False
 # Continues after the obstacle is no more
 RESTART_AFTER_OBS_CLEAR = False
 # Pretty self explanatory
 LIDAR_DETECT_RADIUS = 250
+# Only check with table bounds - margin for lidar
+LIDAR_TABLE_MARGIN = 10
 # Offset to the border of the table
-BORDER_SETUP_OFFSET = 30
+BORDER_SETUP_OFFSET = 35
 # Time to wait between commands
-INST_WAIT = 0
+INST_WAIT = 0.3
 
 # ===========================
 
@@ -33,6 +35,7 @@ START_THETA = 0 if BLUE_SIDE else math.radians(180)
 
 class CustomScenario(handlers.Scenario):
 	def play(self):
+		st = time.time()
 		#self.move(275-(ROBOT_LENGTH-ARM_OFFSET_TO_FRONT), 0)
 		self.move(215)
 		for i in range(3):
@@ -44,12 +47,29 @@ class CustomScenario(handlers.Scenario):
 			if i != 2:
 				self.move(220)
 
+		#self.move(550)
+		#for i in range(3):
+		#	self.arm_deploy(not BLUE_SIDE, True)
+		#	self.arm_turn(not BLUE_SIDE, SIDE_DIR*90)
+		#	self.add_score(5)
+		#	self.arm_deploy(not BLUE_SIDE, False)
+
+		#	if i != 2:
+		#		self.move(220)
+		self.move(275)
 		self.turn(SIDE_DIR*90)
 		self.move(handlers.ROBOT_WIDTH+325*2+450+155)
 		self.turn(SIDE_DIR*90)
-		self.move(225*2+75, 0)
-		self.add_score(10)
+		self.move(225*2+75+200+550+225*2, blocking=False)
 		time.sleep(10)
+		self.asserv.stop()
+		self.add_score(10)
+		wait_time = 90-(time.time()-st)
+		print(wait_time)
+		time.sleep(wait_time)
+		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+			s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+			s.connect(("192.168.8.139", 13377))
 		#time.sleep(5)
 		"""
 		self.move(0, math.radians(SIDE_DIR*90))
@@ -71,6 +91,6 @@ print(f"Running {'Blue' if BLUE_SIDE else 'Yellow'} side scenario.")
 asserv = comm.make_asserv()
 action = comm.make_action()
 scenar = CustomScenario(asserv, action, START_X, START_Y, START_THETA, INST_WAIT, JUMPER_SAFE,
-					LIDAR_ENABLE, RESTART_AFTER_OBS_CLEAR, LIDAR_DETECT_RADIUS)
+					LIDAR_ENABLE, RESTART_AFTER_OBS_CLEAR, LIDAR_DETECT_RADIUS, LIDAR_TABLE_MARGIN)
 
 scenar.run()
