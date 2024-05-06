@@ -38,7 +38,7 @@ LIDAR_THREAD_SLEEP_DURATION = 0.1
 # if x.any() or y.any():
 #     print("Ye")
 # else:
-#     print("Yeet")
+#     print("Yeet")x
 
 
 def pathfinding_thread_function(strategy: list, robot: Asserv, recv_queue: queue.Queue):
