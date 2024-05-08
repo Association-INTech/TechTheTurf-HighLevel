@@ -1,9 +1,10 @@
 import math
 import cmd
 import time
-import sys
+import argparse
 
 import comm
+import handlers
 
 def str_to_bool(val):
 	val = val.strip().lower()
@@ -238,6 +239,13 @@ class AsservCommander(BaseCommander):
 		state = ["Reaching Theta", "Reaching Dst", "Reached target"][state]
 		print(f"State: {state}")
 
+	def do_dbg(self, arg):
+		"""debug cmd: dbg prints the debug info for each bg"""
+		vel, curr, temp, vbus = self.pico.debug_get_left_bg_stats()
+		print(f"Left  BG: {vel:.2f}rad/s, {curr:.2f}A, {vbus:.2f}V, {temp:.2f}°C")
+		vel, curr, temp, vbus = self.pico.debug_get_right_bg_stats()
+		print(f"Right BG: {vel:.2f}rad/s, {curr:.2f}A, {vbus:.2f}V, {temp:.2f}°C")
+
 	def do_estop(self, arg):
 		"""estop: sends an emergency stop"""
 		self.pico.emergency_stop()
@@ -255,23 +263,7 @@ class AsservCommander(BaseCommander):
 
 		tx, ty = map(float,arg.split())
 
-		dst, theta = self.pico.get_pos()
-		cx, cy = self.pico.get_pos_xy()
-		dx = tx - cx
-		dy = ty - cy
-
-		deltaTheta = (math.atan2(dy, dx)-theta)
-		deltaDst = math.sqrt(dx * dx + dy * dy)
-
-		sign = 1 if deltaTheta > 0 else -1
-
-		deltaTheta %= sign*2*math.pi
-
-		if abs(deltaTheta) > math.pi:
-			deltaTheta = deltaTheta - sign*2*math.pi
-
-		print(f"Moving {deltaTheta}rads, {deltaDst}mm")
-		self.pico.move(deltaDst, deltaTheta)
+		self.pico.move_abs(tx, ty)
 
 	def do_sq(self, arg):
 		"""sq (side length)"""
@@ -450,10 +442,27 @@ class ActionCommander(BaseCommander):
 
 if __name__ == "__main__":
 	# Build the right commander
-	if len(sys.argv) > 1 and sys.argv[1] == "a":
-		commander = ActionCommander(comm.make_action())
+	parser = argparse.ArgumentParser(prog='Commander',
+			description='Debug tool to talk to the picos')
+
+	parser.add_argument('-a', '--action', action='store_true', help='Run the action pico commander')
+	parser.add_argument('-d', '--debug', action='store_true', help='Enables the screen debug')
+
+	args = parser.parse_args()
+
+	action = None
+	asserv = None
+
+	if args.action:
+		action = comm.make_action()
+		commander = ActionCommander(action)
 	else:
-		commander = AsservCommander(comm.make_asserv())
+		asserv = comm.make_asserv()
+		commander = AsservCommander(asserv)
+
+	if args.debug:
+		scr_handler = handlers.DisplayHandler(action=action, asserv=asserv, debug=True)
+		scr_handler.start()
 
 	# Run the cmd loop
 	try:

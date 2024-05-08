@@ -1,4 +1,5 @@
 import threading
+import queue
 import time
 from hokuyolx import HokuyoLX
 import numpy as np
@@ -37,10 +38,10 @@ LIDAR_THREAD_SLEEP_DURATION = 0.1
 # if x.any() or y.any():
 #     print("Ye")
 # else:
-#     print("Yeet")
+#     print("Yeet")x
 
 
-def pathfinding_thread_function(strategy: list, robot: Asserv):
+def pathfinding_thread_function(strategy: list, robot: Asserv, recv_queue: queue.Queue):
     astar = BinaryGridGraph(np.zeros(shape=(PATHFINDING_RESOLUTION_X, PATHFINDING_RESOLUTION_Y)))
     # astar = AStar(PATHFINDING_RESOLUTION_X, PATHFINDING_RESOLUTION_Y)
 
@@ -59,6 +60,7 @@ def pathfinding_thread_function(strategy: list, robot: Asserv):
         #     astar.pos_to_index(current_objective[0], current_objective[1]))
 
         while len(path) != 0:
+
             target_position = path.pop(0)
 
             # Break out of the inner loop if we are close enough to the current strategy's
@@ -66,12 +68,18 @@ def pathfinding_thread_function(strategy: list, robot: Asserv):
             distance_squared = ((target_position[0] - robot_position[0]) ** 2 +
                                 (target_position[1] - robot_position[1]) ** 2)
 
+            while not recv_queue.empty():
+                # Collider_update: tuple[tuple[int, int], bool]
+                collider_update = recv_queue.get()
+                astar[collider_update[0]] = collider_update[1]
+
             # Note: here the path is considered to be vectorized.
             if astar.has_updated_collider_since_last_path_calculation:
                 path = shortest_vectorized_path(astar.grid, robot_position, current_objective)
 
                 # Restart the loop just in case. (who knows?)
                 continue
+
             try:
                 current_rho_theta = robot.get_pos()
                 delta_position = (target_position[0] - robot_position[0], target_position[1] - robot_position[1])
@@ -108,7 +116,7 @@ def pathfinding_thread_function(strategy: list, robot: Asserv):
             break
 
 
-def lidar_thread_function(robot: Asserv):
+def lidar_thread_function(robot: Asserv, send_queue: queue.Queue):
     lidar = HokuyoLX()
     while True:
         timestamp, scan = lidar.get_filtered_dist(dmax=50000)
@@ -151,8 +159,12 @@ def lidar_thread_function(robot: Asserv):
 
 robot_asserv = comm.make_asserv()
 
-pathfinding_thread = threading.Thread(target=pathfinding_thread_function, args=([], robot_asserv,))
-lidar_thread = threading.Thread(target=lidar_thread_function, args=(robot_asserv,))
+lidar_to_pathfinding_com_queue = queue.Queue()
+
+pathfinding_thread = threading.Thread(
+    target=pathfinding_thread_function, args=([], robot_asserv, lidar_to_pathfinding_com_queue,))
+lidar_thread = threading.Thread(
+    target=lidar_thread_function, args=(robot_asserv, lidar_to_pathfinding_com_queue,))
 
 pathfinding_thread.join()
 lidar_thread.join()

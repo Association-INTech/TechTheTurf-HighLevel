@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import struct
 import time
+import math
 import threading
 
 from . import telemetry
@@ -222,6 +223,25 @@ class Asserv(PicoBase):
 	def move(self, rho, theta):
 		self.write_struct(1, "ff", rho, theta)
 
+	def move_abs(self, tx, ty):
+		dst, theta = self.get_pos()
+		cx, cy = self.get_pos_xy()
+		dx = tx - cx
+		dy = ty - cy
+
+		deltaTheta = (math.atan2(dy, dx)-theta)
+		deltaDst = math.sqrt(dx * dx + dy * dy)
+
+		sign = 1 if deltaTheta > 0 else -1
+
+		deltaTheta %= sign*2*math.pi
+
+		if abs(deltaTheta) > math.pi:
+			deltaTheta = deltaTheta - sign*2*math.pi
+
+		#print(f"Moving {deltaTheta}rads, {deltaDst}mm")
+		self.move(deltaDst, deltaTheta)
+
 	def emergency_stop(self):
 		self.write_cmd(0 | (1 << 4))
 
@@ -274,6 +294,12 @@ class Asserv(PicoBase):
 
 	def debug_get_controller_state(self):
 		return self.read_struct(11 | (4 << 4), "B")[0]
+
+	def debug_get_left_bg_stats(self):
+		return self.read_struct(11 | (5 << 4), "ffff")
+
+	def debug_get_right_bg_stats(self):
+		return self.read_struct(11 | (6 << 4), "ffff")
 
 # Class for the pico that handles actuators
 

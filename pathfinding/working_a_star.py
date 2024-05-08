@@ -107,8 +107,9 @@ class BinaryGridGraph(Graph):
         return hash_value % self.width, hash_value // self.width
 
     def __setitem__(self, item, value):
+        if self.grid[item] != value:
+            self.has_updated_collider_since_last_path_calculation = True
         self.grid[item] = value
-        self.has_updated_collider_since_last_path_calculation = True
 
 
 class MinHeap(list):
