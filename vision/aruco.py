@@ -13,6 +13,9 @@ BOARD_TAGS = np.array((
     # ((50, -50, 0.), (-50, -50, 0.), (-50, 50, 0.), (50, 50, 0.))
 ))
 
+ROBOT_MARKER_HEIGHT = 450.
+
+
 dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 parameters = cv2.aruco.DetectorParameters()
 detector = cv2.aruco.ArucoDetector(dictionary, parameters)
@@ -44,6 +47,11 @@ def group_by_marker_id(markers: tuple[tuple[int, int], ...]) -> dict[int, list[i
         else:
             result[marker_id].append(index)
     return result
+
+
+def rects_from_ids(rects, ids):
+    # shape (m, 4, 2)
+    return np.concatenate(tuple(rects[None, x] for _, x in ids), axis=0)
 
 
 """

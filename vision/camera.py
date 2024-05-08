@@ -1,8 +1,8 @@
 import os
 
 import numpy as np
-from .geometry import axle_rotation, X, Y, Z, opencv_save_my_ass, screen_to_ray, dot, mat_x
-from .aruco import detect, BOARD_TAGS, filter_table_tags
+from .geometry import axle_rotation, X, Y, Z, opencv_save_my_ass, screen_to_ray, dot, mat_x, re_intersection, sign
+from .aruco import detect, BOARD_TAGS, filter_table_tags, rects_from_ids, ROBOT_MARKER_HEIGHT
 import cv2
 import platform
 
@@ -149,6 +149,42 @@ class Camera:
         """
         rays = mat_x(self.transformation_matrix[:3, :3].T, screen_to_ray(self.ray_matrix, sc_points))
         return self.screw[:, 0] + rays * (dot(plane_point - self.screw[:, 0], plane_normal) / dot(rays, plane_normal))[..., None]
+
+    def detect_robots(self, blue_beacon_height=0., yellow_beacon_height=0., detect_markers=False, read=False):
+        if detect_markers or read:
+            self.detect(read)
+
+        ids, rects = self.detected
+        blue_robot_markers = filter(lambda x: x[0] in range(1, 6), ids)
+        yellow_robot_markers = filter(lambda x: x[0] in range(6, 11), ids)
+
+        # shapes (m1, 4, 2)
+        sc_blue_rects = rects_from_ids(rects, blue_robot_markers)
+        # shapes (m2, 4, 2)
+        sc_yellow_rects = rects_from_ids(rects, yellow_robot_markers)
+
+        # shapes (m1, 4, 3)
+        re_blue_rects = self.to_real_world(sc_blue_rects, Z, (0., 0., ROBOT_MARKER_HEIGHT+blue_robot_markers))
+        # shapes (m2, 4, 3)
+        re_yellow_rects = self.to_real_world(sc_yellow_rects, Z, (0., 0., ROBOT_MARKER_HEIGHT+yellow_robot_markers))
+
+        # shapes (m1, 2)
+        blue_poses = re_intersection(re_blue_rects.swapaxes(0, 1)[[0, 2, 1, 3]])
+        # shapes (m2, 2)
+        yellow_poses = re_intersection(re_yellow_rects.swapaxes(0, 1)[[0, 2, 1, 3]])
+
+        # shapes (m1, 3)
+        blue_vec = re_blue_rects[:, 1] - re_blue_rects[:, 0]
+        yellow_vec = re_yellow_rects[:, 1] - re_yellow_rects[:, 0]
+
+        # shapes (m1,)
+        blue_mag = np.sum(blue_vec ** 2, axis=1) ** -.5
+        blue_angle = np.arccos(blue_vec[:, 0] * blue_mag) * sign(blue_vec[:, 1])
+        # shapes (m2,)
+        yellow_mag = np.sum(blue_vec ** 2, axis=1) ** -.5
+        yellow_angle = np.arccos(yellow_vec[:, 0] * yellow_mag) * sign(yellow_vec[:, 1])
+
+        return blue_poses, blue_angle, yellow_poses, yellow_angle
 
 
 class HDProWebcamC920(Camera):
