@@ -164,9 +164,9 @@ class Camera:
         sc_yellow_rects = rects_from_ids(rects, yellow_robot_markers)
 
         # shapes (m1, 4, 3)
-        re_blue_rects = self.to_real_world(sc_blue_rects, Z, (0., 0., ROBOT_MARKER_HEIGHT+blue_robot_markers))
+        re_blue_rects = self.to_real_world(sc_blue_rects, Z, (0., 0., ROBOT_MARKER_HEIGHT+blue_beacon_height))
         # shapes (m2, 4, 3)
-        re_yellow_rects = self.to_real_world(sc_yellow_rects, Z, (0., 0., ROBOT_MARKER_HEIGHT+yellow_robot_markers))
+        re_yellow_rects = self.to_real_world(sc_yellow_rects, Z, (0., 0., ROBOT_MARKER_HEIGHT+yellow_beacon_height))
 
         # shapes (m1, 2)
         blue_poses = re_intersection(re_blue_rects.swapaxes(0, 1)[[0, 2, 1, 3]])
