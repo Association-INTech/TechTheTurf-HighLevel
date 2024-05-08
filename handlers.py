@@ -7,6 +7,13 @@ try:
 except Exception:
 	# Running on pami
 	pass
+try:
+	from hcsr04sensor import sensor
+except Exception:
+	# Running on main
+	pass
+
+import metacom.mqtt as mqtt
 
 # General constants
 MATCH_PLAY_TIME = 100
@@ -22,8 +29,15 @@ ENCODER_OFFSET_TO_FRONT = 145
 LIDAR_OFFSET_TO_FRONT = 145
 ARM_OFFSET_TO_FRONT = 135.5
 
+# Paminable constants
+HCSR04_OFFSET_TO_ENCODER = -50
+PAMINABLE_ENCODER_OFFSET_TO_FRONT = 90
+
 # Electrical constants
 JUMPER_PIN = 22
+# Paminable
+HCSR04_TRIG = 23
+HCSR04_ECHO = 24
 
 LCD_ADDR = 0x3f
 LCD_COLS = 20
@@ -126,12 +140,13 @@ class LidarHandler:
 				print(f"Lidar thread Exception: {e}")
 
 class DisplayHandler:
-	def __init__(self, addr=LCD_ADDR, cols=LCD_COLS, rows=LCD_ROWS, rate=10, asserv=None, action=None, jumper=None, debug=False):
+	def __init__(self, addr=LCD_ADDR, cols=LCD_COLS, rows=LCD_ROWS, rate=10, asserv=None, action=None, jumper=None, debug=False, thread=True):
 		self.rate = rate
 		self.asserv = asserv
 		self.action = action
 		self.jumper = jumper
 		self.debug = debug
+		self.use_thread = thread
 		self.score = 0
 
 		# Init. LCD
@@ -142,17 +157,24 @@ class DisplayHandler:
 		self.alive = False
 
 	def start(self):
+		if not self.use_thread:
+			self.draw_display()
+			return
 		self.alive = True
 		self.thread = threading.Thread(target=self.thread_func, daemon=True)
 		self.thread.start()
 
 	def stop(self):
+		if not self.use_thread:
+			return
 		self.alive = False
 		self.thread.join()
 		self.thread = None
 
 	def set_score(self, score):
 		self.score = score
+		if not self.use_thread:
+			self.draw_display()
 
 	def add_score(self, val):
 		self.set_score(self.score + val)
@@ -243,6 +265,51 @@ class DisplayHandler:
 			self.draw_display()
 			time.sleep(1/self.rate)
 
+class HCSR04Handler:
+	def __init__(self, trig, echo, width, length, max_dst, margin, pos_func, detected_func, cleared_func=None, dir=1):
+		self.sensor = sensor.Measurement(trig, echo)
+		self.max_dst = max_dst
+		self.pos_func = pos_func
+		self.detected_func = detected_func
+		self.cleared_func = cleared_func
+		self.width = width
+		self.length = length
+		self.margin = margin
+		self.dir = dir
+
+	def thread_func(self):
+		has_detected = False
+		while self.alive:
+			x,y,theta = self.pos_func()
+			while True:
+				try:
+					dst = self.dir*self.sensor.raw_distance(sample_size=1, sample_wait=0.1)*10.0
+					break
+				except Exception:
+					pass
+			px = x + dst*np.cos(theta)
+			py = y + dst*np.sin(theta)
+
+			if px < self.margin or px > self.length-self.margin or py < self.margin or py > self.width-self.margin:
+				continue
+
+			if abs(dst) < self.max_dst:
+				self.detected_func(dst, theta, px, py)
+				has_detected = True
+			else:
+				if has_detected and self.cleared_func is not None:
+					self.cleared_func()
+				has_detected = False
+
+	def start(self):
+		self.alive = True
+		self.thread = threading.Thread(target=self.thread_func, daemon=True)
+		self.thread.start()
+
+	def stop(self):
+		self.alive = False
+		self.thread.join()
+		self.thread = None
 
 def inst(func):
 	def inner(self, *args, **kwargs):
@@ -257,7 +324,7 @@ def inst(func):
 	return inner
 
 class Scenario:
-	def __init__(self, asserv, action, start_x, start_y, start_theta, inst_wait=0, jumper_safe=True, lidar_enable=True, lidar_restart=False, lidar_radius=300, lidar_margin=10):
+	def __init__(self, asserv, action, start_x, start_y, start_theta, inst_wait=0, jumper_safe=True, lidar_enable=True, lidar_restart=False, lidar_radius=300, lidar_margin=10, ip_nuc=None):
 		self.asserv = asserv
 		self.action = action
 
@@ -270,7 +337,11 @@ class Scenario:
 		self.jumper = JumperStart(safe=jumper_safe)
 		self.lidar = LidarHandler(TABLE_WIDTH, TABLE_LENGTH, lidar_radius, lidar_margin, lambda: self.get_pos(LIDAR_OFFSET_TO_FRONT - ENCODER_OFFSET_TO_FRONT),
 								self.lidar_detect, self.lidar_cleared) if lidar_enable else None
-		self.disp = DisplayHandler(asserv=self.asserv, action=self.action, jumper=self.jumper)
+		self.disp = DisplayHandler(asserv=self.asserv, action=self.action, jumper=self.jumper, thread=False)
+		self.start_info = mqtt.InfoDebut()
+		self.mcom = mqtt.Poulet(ip_nuc, [self.start_info]) if ip_nuc is not None else None
+		if self.mcom is not None:
+			self.mcom.demarre_fil()
 
 		self.started = False
 
@@ -335,6 +406,7 @@ class Scenario:
 			self.disp.start()
 
 			self.jumper.wait()
+			self.start_info.demarre()
 
 			self.started = True
 			self.play()
@@ -354,6 +426,87 @@ class Scenario:
 
 	def lidar_cleared(self):
 		if self.started and self.lidar_restart:
+			self.asserv.notify_stop_clear()
+
+	def get_rel_pos(self):
+		dst, theta = self.asserv.get_pos()
+		x,y = self.asserv.get_pos_xy()
+		theta += self.start_theta
+		return x,y,theta
+
+	def get_pos(self, x_off=0, y_off=0):
+		x,y,theta = self.get_rel_pos()
+
+		cos_tht = np.cos(theta)
+		sin_tht = np.sin(theta)
+		x += cos_tht*x_off - sin_tht*y_off + self.start_x
+		y += sin_tht*x_off + cos_tht*y_off + self.start_y
+
+		return x,y,theta
+
+
+class PaminableScenario:
+	def __init__(self, asserv, start_x, start_y, start_theta, inst_wait=0, ultra_enable=True, ultra_restart=False, ultra_radius=300, ultra_margin=10, ip_nuc=None):
+		self.asserv = asserv
+
+		self.start_x = start_x
+		self.start_y = start_y
+		self.start_theta = start_theta
+		self.ultra_restart = ultra_restart
+		self.inst_wait = inst_wait
+
+		self.ultra = HCSR04Handler(HCSR04_TRIG, HCSR04_ECHO, TABLE_WIDTH, TABLE_LENGTH, ultra_radius, ultra_margin, lambda: self.get_pos(HCSR04_OFFSET_TO_ENCODER),
+								self.lidar_detect, self.lidar_cleared, -1) if ultra_enable else None
+		self.start_info = mqtt.InfoDebut()
+		self.mcom = mqtt.Poulet(ip_nuc, [self.start_info]) if ip_nuc is not None else None
+		if self.mcom is not None:
+			self.mcom.demarre_fil()
+
+		self.started = False
+
+	# dst in mm, angle in deg
+	@inst
+	def move(self, dst, angle=0, **kwargs):
+		self.asserv.move(dst, np.radians(angle), **kwargs)
+
+	# angle in deg
+	@inst
+	def turn(self, angle, **kwargs):
+		self.asserv.move(0, np.radians(angle), **kwargs)
+
+	# Table coords ? maybe
+	@inst
+	def move_abs(self, x, y, **kwargs):
+		self.asserv.move_abs(x, y, **kwargs)
+
+	def run(self):
+		try:
+			self.asserv.start()
+
+			if self.ultra is not None:
+				print("Starting HC-SR04...")
+				self.ultra.start()
+
+			if self.mcom is not None:
+				self.start_info.wait()
+
+			self.started = True
+			self.play()
+			self.started = False
+		finally:
+			print("Stopping everything")
+			self.asserv.stop()
+
+	def play(self):
+		raise NotImplementedError("Scenario needs a play method")
+
+	def lidar_detect(self, dst, theta, x, y):
+		print(f"Obs {x}, {y}, {dst} {np.degrees(theta)}")
+		if self.started:
+			self.asserv.notify_stop()
+
+	def lidar_cleared(self):
+		if self.started and self.ultra_restart:
 			self.asserv.notify_stop_clear()
 
 	def get_rel_pos(self):

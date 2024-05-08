@@ -99,7 +99,7 @@ class Visualiser:
 		return plots
 
 	def start(self):
-		impath = pathlib.Path(__file__).parent.resolve()/"table.png"
+		impath = pathlib.Path(__file__).parent.resolve()/"images"/"table.png"
 		img = plt.imread(impath)
 
 		self.fig.set_layout_engine("tight")

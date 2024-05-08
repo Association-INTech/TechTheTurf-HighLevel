@@ -39,18 +39,26 @@ class InfoRobot(ObjetSujet):
 	def deserialiser(self, donnee, client):
 		self.x, self.y, self.theta = struct.unpack(BOUTISME_STRUCT+"fff", donnee)
 
-class InfoDepart(ObjetSujet):
-	def __init__(self, nom, retenu=False, qds=0):
-		super().__init__(f"info_robot_{nom}", retenu, qds)
-		self.x = 0
-		self.y = 0
-		self.theta = 0
+class InfoDebut(ObjetSujet):
+	def __init__(self, retenu=False, qds=0):
+		super().__init__("info_debut", retenu, qds)
+		self.demarre = False
+		self.temps = 0
+
+	def demarre(self):
+		self.demarre = True
+		self.temps = time.time()
+		self.maj()
+
+	def attends(self):
+		while not self.demarre:
+			time.sleep(0.01)
 
 	def serialiser(self):
-		return struct.pack(BOUTISME_STRUCT+"fff", self.x, self.y, self.theta)
+		return struct.pack(BOUTISME_STRUCT+"?f", self.demarre, self.temps)
 
 	def deserialiser(self, donnee, client):
-		self.x, self.y, self.theta = struct.unpack(BOUTISME_STRUCT+"fff", donnee)
+		self.demarre, self.temps = struct.unpack(BOUTISME_STRUCT+"?f", donnee)
 		
 
 class Utilisateur:

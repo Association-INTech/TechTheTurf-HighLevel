@@ -5,7 +5,7 @@ import comm
 # ======== Settings ========
 
 # :)
-LIDAR_ENABLE = False
+LIDAR_ENABLE = True
 # Side
 BLUE_SIDE = True
 # Only run on negative edge of jumper switch
@@ -13,7 +13,7 @@ JUMPER_SAFE = False
 # Continues after the obstacle is no more
 RESTART_AFTER_OBS_CLEAR = False
 # Pretty self explanatory
-LIDAR_DETECT_RADIUS = 250
+LIDAR_DETECT_RADIUS = 450
 # Only check with table bounds - margin for lidar
 LIDAR_TABLE_MARGIN = 10
 # Offset to the border of the table
@@ -64,12 +64,6 @@ class CustomScenario(handlers.Scenario):
 		time.sleep(10)
 		self.asserv.stop()
 		self.add_score(10)
-		wait_time = 90-(time.time()-st)
-		print(wait_time)
-		time.sleep(wait_time)
-		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-			s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-			s.connect(("192.168.8.139", 13377))
 		#time.sleep(5)
 		"""
 		self.move(0, math.radians(SIDE_DIR*90))

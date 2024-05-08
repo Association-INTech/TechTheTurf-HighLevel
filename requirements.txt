@@ -22,3 +22,6 @@ paho-mqtt
 
 # LCD Display
 rplcd
+
+# HC-SR04 Pami
+hcsr04sensor
