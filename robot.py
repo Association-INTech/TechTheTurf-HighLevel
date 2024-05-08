@@ -1,24 +1,32 @@
 import threading
-import queue
 import time
 from hokuyolx import HokuyoLX
-import numpy as np
 import comm
 from comm import Asserv
-# from pathfinding.a_star import AStar
 from pathfinding.working_a_star import *
+from vision.camera import Camera
+from vision.geometry import sc_intersection
 
-PATHFINDING_RESOLUTION_X = 100
-PATHFINDING_RESOLUTION_Y = 100
-PATHFINDING_MIN_DISTANCE_TO_POINT = 1
+RUNNING, FPS = range(2)
+
+TABLE = np.array(((
+    (-1500., 0., 0.),
+    (-1500., 2000., 0.),
+    (1500., 2000., 0.),
+    (1500., 0., 0.)
+),))
+
+PATHFINDING_RESOLUTION_X = 300
+PATHFINDING_RESOLUTION_Y = 200
+PATHFINDING_MIN_DISTANCE_TO_POINT = 10
 PATHFINDING_THREAD_SLEEP_DURATION = 0.1
 
 LIDAR_MIN_POSITION_X = 0
-LIDAR_MAX_POSITION_X = 100
+LIDAR_MAX_POSITION_X = 3000
 LIDAR_MIN_POSITION_Y = 0
-LIDAR_MAX_POSITION_Y = 100
+LIDAR_MAX_POSITION_Y = 2000
 
-LIDAR_MIN_DISTANCE = 3
+LIDAR_MIN_DISTANCE = 15
 LIDAR_THREAD_SLEEP_DURATION = 0.1
 
 # lidar = HokuyoLX()
@@ -41,8 +49,7 @@ LIDAR_THREAD_SLEEP_DURATION = 0.1
 #     print("Yeet")x
 
 
-def pathfinding_thread_function(strategy: list, robot: Asserv, recv_queue: queue.Queue):
-    astar = BinaryGridGraph(np.zeros(shape=(PATHFINDING_RESOLUTION_X, PATHFINDING_RESOLUTION_Y)))
+def pathfinding_thread_function(strategy: list, robot: Asserv, astar):
     # astar = AStar(PATHFINDING_RESOLUTION_X, PATHFINDING_RESOLUTION_Y)
 
     try:
@@ -67,11 +74,6 @@ def pathfinding_thread_function(strategy: list, robot: Asserv, recv_queue: queue
             # position.
             distance_squared = ((target_position[0] - robot_position[0]) ** 2 +
                                 (target_position[1] - robot_position[1]) ** 2)
-
-            while not recv_queue.empty():
-                # Collider_update: tuple[tuple[int, int], bool]
-                collider_update = recv_queue.get()
-                astar[collider_update[0]] = collider_update[1]
 
             # Note: here the path is considered to be vectorized.
             if astar.has_updated_collider_since_last_path_calculation:
@@ -116,7 +118,7 @@ def pathfinding_thread_function(strategy: list, robot: Asserv, recv_queue: queue
             break
 
 
-def lidar_thread_function(robot: Asserv, send_queue: queue.Queue):
+def lidar_thread_function(robot: Asserv):
     lidar = HokuyoLX()
     while True:
         timestamp, scan = lidar.get_filtered_dist(dmax=50000)
@@ -135,36 +137,68 @@ def lidar_thread_function(robot: Asserv, send_queue: queue.Queue):
         if x.any() or y.any():
             robot.notify_stop()
 
-        # for i in range(len(angles)):
-        #     robot_position = robot.get_pos_xy()
-        #     offset_position = (np.cos(angles[i]) * distances[i], np.sin(angles[i]) * distances[i])
-        #     position = (robot_position[0] + offset_position[0], robot_position[0] + offset_position[1])
-        #     # offset_position: Vec2 = Vec2(np.cos(angles[i]), np.sin(angles[i])).scale(distances[i])
-        #     # position = robot_state.position.add(offset_position)
-        #     if (not (LIDAR_MIN_POSITION_X < position[0] < LIDAR_MAX_POSITION_X) or
-        #             not (LIDAR_MIN_POSITION_X < position[1] < LIDAR_MAX_POSITION_Y)):
-        #         continue
-        #
-        #     distance_squared = offset_position[0] ** 2 + offset_position[1] ** 2
-        #     if distance_squared < LIDAR_MIN_DISTANCE ** 2:
-        #         is_near_object = True
-        #         # We currently only care if there is an object nearby.
-        #         break
-        #
-        # if is_near_object:
-        #     robot.notify_stop()
-
         time.sleep(LIDAR_THREAD_SLEEP_DURATION)
 
 
+def cam_thread(index, camera: Camera, shared, fps):
+    try:
+        while shared[RUNNING]:
+            date = time.perf_counter()
+            camera.read()
+            # print('\r', 1 / (time.perf_counter() - date), end='')
+            shared[FPS][index] = 1 / (time.perf_counter() - date)
+            while time.perf_counter() - date < 1/fps:
+                time.sleep(0.01)
+                # shared[RUNNING] &= cv2.pollKey() != ord('q') and cv2.getWindowProperty(camera.name, cv2.WND_PROP_VISIBLE) > 0
+    except Exception as _:
+        shared[RUNNING] = False
+
+def camera_thread_function(camera_classes: list[type[Camera]], shared, fps, astar):
+    cameras = tuple(cls.new() for cls in camera_classes)
+
+    for index, camera in enumerate(cameras):
+        threading.Thread(target=cam_thread, args=(index, camera, shared, fps)).start()
+
+    time.sleep(1.)
+
+    while shared[RUNNING] and all(camera.stream is not None for camera in cameras):
+        time.sleep(0.1)
+        date = time.perf_counter()
+
+        astar.grid.fill(0)
+        for camera in cameras:
+            # camera.read()
+            camera.reposition(detect_markers=True)
+            # img = np.array(camera.image)
+
+            ids, rects = camera.detected
+            if ids:
+                sc_rect_centers = sc_intersection(rects.swapaxes(0, 1)[[0, 2, 1, 3]])
+                re_rect_centers = np.int32(camera.to_real_world(sc_rect_centers))
+
+                for i in range(re_rect_centers.len()):
+                    if (-1500 < re_rect_centers[i][0] < 1500 and
+                            0 < re_rect_centers[i][1] < 2000 and
+                            40 < re_rect_centers[i][2] < 50):
+                        astar[(re_rect_centers[i][0] + 1500) / 100, re_rect_centers[i][1] / 100] = 1
+
+
+shared_vars = [True, [0.] * len(Camera.__subclasses__())]
+
 robot_asserv = comm.make_asserv()
 
-lidar_to_pathfinding_com_queue = queue.Queue()
+passed_astar = BinaryGridGraph(np.zeros(shape=(PATHFINDING_RESOLUTION_X, PATHFINDING_RESOLUTION_Y)))
 
 pathfinding_thread = threading.Thread(
-    target=pathfinding_thread_function, args=([], robot_asserv, lidar_to_pathfinding_com_queue,))
+    target=pathfinding_thread_function, args=([], robot_asserv, passed_astar,))
+
 lidar_thread = threading.Thread(
-    target=lidar_thread_function, args=(robot_asserv, lidar_to_pathfinding_com_queue,))
+    target=lidar_thread_function, args=(robot_asserv,))
+
+camera_thread = threading.Thread(
+    target=camera_thread_function, args=([], Camera.__subclasses__(), shared_vars, 20, passed_astar, )
+)
 
 pathfinding_thread.join()
 lidar_thread.join()
+camera_thread.join()
