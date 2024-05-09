@@ -7,7 +7,7 @@ import threading
 from . import telemetry
 
 ENDIANNESS = "<"
-POLLING_RATE = 50
+POLLING_RATE = 30
 
 @dataclass
 class Pid:
@@ -33,12 +33,18 @@ class Pid:
 
 # Base class with I2C comm helpers
 
+I2C_LOCKS = {}
+
 class I2CBase:
 	def __init__(self, bus=None, addr=None):
 		self.bus = bus
 		self.addr = addr
 		self.i2c_simulate = bus is None
-		self.lock = threading.Lock()
+		if bus in I2C_LOCKS:
+			self.lock = I2C_LOCKS[bus]
+		else:
+			self.lock = threading.Lock()
+			I2C_LOCKS[bus] = self.lock
 
 	def write(self, reg, data):
 		if self.i2c_simulate:

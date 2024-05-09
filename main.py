@@ -1,4 +1,4 @@
-import time, math, socket
+import time, math, sys
 import handlers
 import comm
 
@@ -7,7 +7,7 @@ import comm
 # :)
 LIDAR_ENABLE = True
 # Side
-BLUE_SIDE = True
+BLUE_SIDE = sys.argv[1] == "b"
 # Only run on negative edge of jumper switch
 JUMPER_SAFE = False
 # Continues after the obstacle is no more
@@ -20,6 +20,7 @@ LIDAR_TABLE_MARGIN = 10
 BORDER_SETUP_OFFSET = 35
 # Time to wait between commands
 INST_WAIT = 0.3
+NUC_IP = "192.168.8.125"
 
 # ===========================
 
@@ -35,8 +36,8 @@ START_THETA = 0 if BLUE_SIDE else math.radians(180)
 
 class CustomScenario(handlers.Scenario):
 	def play(self):
-		st = time.time()
 		#self.move(275-(ROBOT_LENGTH-ARM_OFFSET_TO_FRONT), 0)
+		self.move(1500)
 		self.move(215)
 		for i in range(3):
 			self.arm_deploy(not BLUE_SIDE, True)
@@ -59,8 +60,8 @@ class CustomScenario(handlers.Scenario):
 		self.move(275)
 		self.turn(SIDE_DIR*90)
 		self.move(handlers.ROBOT_WIDTH+325*2+450+155)
-		self.turn(SIDE_DIR*90)
-		self.move(225*2+75+200+550+225*2, blocking=False)
+		self.turn(SIDE_DIR*90)#+550+225*2
+		self.move(225*2+75+200, blocking=False)
 		time.sleep(10)
 		self.asserv.stop()
 		self.add_score(10)
@@ -85,6 +86,6 @@ print(f"Running {'Blue' if BLUE_SIDE else 'Yellow'} side scenario.")
 asserv = comm.make_asserv()
 action = comm.make_action()
 scenar = CustomScenario(asserv, action, START_X, START_Y, START_THETA, INST_WAIT, JUMPER_SAFE,
-					LIDAR_ENABLE, RESTART_AFTER_OBS_CLEAR, LIDAR_DETECT_RADIUS, LIDAR_TABLE_MARGIN)
+					LIDAR_ENABLE, RESTART_AFTER_OBS_CLEAR, LIDAR_DETECT_RADIUS, LIDAR_TABLE_MARGIN, NUC_IP)
 
 scenar.run()

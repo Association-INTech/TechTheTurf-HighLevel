@@ -45,7 +45,7 @@ class InfoDebut(ObjetSujet):
 		self.demarre = False
 		self.temps = 0
 
-	def demarre(self):
+	def demarrer(self):
 		self.demarre = True
 		self.temps = time.time()
 		self.maj()

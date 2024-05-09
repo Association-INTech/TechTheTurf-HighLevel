@@ -1,6 +1,7 @@
 import RPi.GPIO as GPIO
 import threading, time
 import numpy as np
+import os
 try:
 	import hokuyolx
 	from RPLCD.i2c import CharLCD
@@ -119,8 +120,8 @@ class LidarHandler:
 					px = x + dst*np.cos(theta+ang)
 					py = y + dst*np.sin(theta+ang)
 
-					if px < self.margin or px > self.length-self.margin or py < self.margin or py > self.width-self.margin:
-						continue
+					#if px < self.margin or px > self.length-self.margin or py < self.margin or py > self.width-self.margin:
+					#	continue
 
 					if dst > self.radius:
 						continue
@@ -136,6 +137,7 @@ class LidarHandler:
 					if has_detected and self.cleared_func is not None:
 						self.cleared_func()
 					has_detected = False
+				time.sleep(0.05)
 			except Exception as e:
 				print(f"Lidar thread Exception: {e}")
 
@@ -323,27 +325,36 @@ def inst(func):
 
 	return inner
 
-class Scenario:
-	def __init__(self, asserv, action, start_x, start_y, start_theta, inst_wait=0, jumper_safe=True, lidar_enable=True, lidar_restart=False, lidar_radius=300, lidar_margin=10, ip_nuc=None):
-		self.asserv = asserv
-		self.action = action
-
+class BaseScenario:
+	def __init__(self, asserv, start_x, start_y, start_theta, inst_wait=0, ip_nuc=None, mcom_class=None, obs_restart=False):
 		self.start_x = start_x
 		self.start_y = start_y
 		self.start_theta = start_theta
-		self.lidar_restart = lidar_restart
-		self.inst_wait = inst_wait
 
-		self.jumper = JumperStart(safe=jumper_safe)
-		self.lidar = LidarHandler(TABLE_WIDTH, TABLE_LENGTH, lidar_radius, lidar_margin, lambda: self.get_pos(LIDAR_OFFSET_TO_FRONT - ENCODER_OFFSET_TO_FRONT),
-								self.lidar_detect, self.lidar_cleared) if lidar_enable else None
-		self.disp = DisplayHandler(asserv=self.asserv, action=self.action, jumper=self.jumper, thread=False)
+		self.asserv = asserv
+		self.inst_wait = inst_wait
+		self.obs_restart = obs_restart
+
 		self.start_info = mqtt.InfoDebut()
-		self.mcom = mqtt.Poulet(ip_nuc, [self.start_info]) if ip_nuc is not None else None
+		self.mcom = None
+		if ip_nuc is not None and mcom_class is not None:
+			objs = [self.start_info]
+			objs.extend(self.get_mcom_objs())
+			self.mcom = mcom_class(ip_nuc, objs)
+
+		self.started = False
+
 		if self.mcom is not None:
 			self.mcom.demarre_fil()
 
-		self.started = False
+		self.stop_thread = threading.Thread(target=self.stop_thread_func, daemon=True)
+		self.stop_thread.start()
+
+	def stop_thread_func(self):
+		while not self.started:
+			time.sleep(0.01)
+		time.sleep(MATCH_PLAY_TIME)
+		self.finish()
 
 	# dst in mm, angle in deg
 	@inst
@@ -359,6 +370,69 @@ class Scenario:
 	@inst
 	def move_abs(self, x, y, **kwargs):
 		self.asserv.move_abs(x, y, **kwargs)
+
+	def get_rel_pos(self):
+		dst, theta = self.asserv.get_pos()
+		x,y = self.asserv.get_pos_xy()
+		theta += self.start_theta
+		return x,y,theta
+
+	def get_pos(self, x_off=0, y_off=0):
+		x,y,theta = self.get_rel_pos()
+
+		cos_tht = np.cos(theta)
+		sin_tht = np.sin(theta)
+		x += cos_tht*x_off - sin_tht*y_off + self.start_x
+		y += sin_tht*x_off + cos_tht*y_off + self.start_y
+
+		return x,y,theta
+
+	def obs_detect(self, dst, theta, x, y):
+		print(f"Obs {x}, {y}, {dst} {np.degrees(theta)}")
+		if self.started:
+			self.asserv.notify_stop()
+
+	def obs_cleared(self):
+		if self.started and self.obs_restart:
+			self.asserv.notify_stop_clear()
+
+	def run(self):
+		try:
+			self.startup()
+
+			self.started = True
+			self.play()
+			self.started = False
+		finally:
+			self.finish()
+
+	# ====== To implement =======
+
+	# Inits once, should store objects in instance
+	def get_mcom_objs(self):
+		return []
+
+	def play(self):
+		raise NotImplementedError("Scenario needs a play method")
+
+	# Happens before the play, needs to wait for the right time here, either using a jumper or with mcom
+	def startup(self):
+		self.asserv.start()
+
+	# When you play returns, be called after 100s regardless
+	def finish(self):
+		print("Stopping everything")
+		self.asserv.stop()
+
+class Scenario(BaseScenario):
+	def __init__(self, asserv, action, start_x, start_y, start_theta, inst_wait=0, jumper_safe=True, lidar_enable=True, lidar_restart=False, lidar_radius=300, lidar_margin=10, ip_nuc=None):
+		super().__init__(asserv, start_x, start_y, start_theta, inst_wait, ip_nuc, mqtt.Poulet, lidar_restart)
+		self.action = action
+
+		self.jumper = JumperStart(safe=jumper_safe)
+		self.lidar = LidarHandler(TABLE_WIDTH, TABLE_LENGTH, lidar_radius, lidar_margin, lambda: self.get_pos(LIDAR_OFFSET_TO_FRONT - ENCODER_OFFSET_TO_FRONT),
+								self.obs_detect, self.obs_cleared) if lidar_enable else None
+		self.disp = DisplayHandler(asserv=self.asserv, action=self.action, jumper=self.jumper, thread=False)
 
 	@inst
 	def arm_deploy(self, left, deploy, **kwargs):
@@ -390,137 +464,43 @@ class Scenario:
 	def clear_score(self):
 		self.disp.clear_score()
 
-	def run(self):
-		try:
-			self.asserv.start()
-			self.action.start()
+	def startup(self):
+		super().startup()
+		self.action.start()
 
-			self.action.right_arm_fold()
-			self.action.left_arm_fold()
+		self.action.right_arm_fold()
+		self.action.left_arm_fold()
 
-			if self.lidar is not None:
-				print("Starting LIDAR...")
-				self.lidar.start()
-				print("LIDAR up.")
+		if self.lidar is not None:
+			print("Starting LIDAR...")
+			self.lidar.start()
+			print("LIDAR up.")
 
-			self.disp.start()
+		self.disp.start()
 
-			self.jumper.wait()
-			self.start_info.demarre()
+		self.jumper.wait()
+		self.start_info.demarrer()
 
-			self.started = True
-			self.play()
-			self.started = False
-		finally:
-			print("Stopping everything")
-			self.asserv.stop()
-			self.action.stop()
+	def finish(self):
+		super().finish()
+		self.action.stop()
 
 	def play(self):
 		raise NotImplementedError("Scenario needs a play method")
 
-	def lidar_detect(self, dst, theta, x, y):
-		print(f"Obs {x}, {y}, {dst} {np.degrees(theta)}")
-		if self.started:
-			self.asserv.notify_stop()
 
-	def lidar_cleared(self):
-		if self.started and self.lidar_restart:
-			self.asserv.notify_stop_clear()
-
-	def get_rel_pos(self):
-		dst, theta = self.asserv.get_pos()
-		x,y = self.asserv.get_pos_xy()
-		theta += self.start_theta
-		return x,y,theta
-
-	def get_pos(self, x_off=0, y_off=0):
-		x,y,theta = self.get_rel_pos()
-
-		cos_tht = np.cos(theta)
-		sin_tht = np.sin(theta)
-		x += cos_tht*x_off - sin_tht*y_off + self.start_x
-		y += sin_tht*x_off + cos_tht*y_off + self.start_y
-
-		return x,y,theta
-
-
-class PaminableScenario:
+class PaminableScenario(BaseScenario):
 	def __init__(self, asserv, start_x, start_y, start_theta, inst_wait=0, ultra_enable=True, ultra_restart=False, ultra_radius=300, ultra_margin=10, ip_nuc=None):
-		self.asserv = asserv
-
-		self.start_x = start_x
-		self.start_y = start_y
-		self.start_theta = start_theta
-		self.ultra_restart = ultra_restart
-		self.inst_wait = inst_wait
+		super().__init__(asserv, start_x, start_y, start_theta, inst_wait, ip_nuc, mqtt.Paminable, ultra_restart)
 
 		self.ultra = HCSR04Handler(HCSR04_TRIG, HCSR04_ECHO, TABLE_WIDTH, TABLE_LENGTH, ultra_radius, ultra_margin, lambda: self.get_pos(HCSR04_OFFSET_TO_ENCODER),
-								self.lidar_detect, self.lidar_cleared, -1) if ultra_enable else None
-		self.start_info = mqtt.InfoDebut()
-		self.mcom = mqtt.Poulet(ip_nuc, [self.start_info]) if ip_nuc is not None else None
+								self.obs_detect, self.obs_cleared, -1) if ultra_enable else None
+
+	def startup(self):
+		super().startup()
+		if self.ultra is not None:
+			print("Starting HC-SR04...")
+			self.ultra.start()
+
 		if self.mcom is not None:
-			self.mcom.demarre_fil()
-
-		self.started = False
-
-	# dst in mm, angle in deg
-	@inst
-	def move(self, dst, angle=0, **kwargs):
-		self.asserv.move(dst, np.radians(angle), **kwargs)
-
-	# angle in deg
-	@inst
-	def turn(self, angle, **kwargs):
-		self.asserv.move(0, np.radians(angle), **kwargs)
-
-	# Table coords ? maybe
-	@inst
-	def move_abs(self, x, y, **kwargs):
-		self.asserv.move_abs(x, y, **kwargs)
-
-	def run(self):
-		try:
-			self.asserv.start()
-
-			if self.ultra is not None:
-				print("Starting HC-SR04...")
-				self.ultra.start()
-
-			if self.mcom is not None:
-				self.start_info.wait()
-
-			self.started = True
-			self.play()
-			self.started = False
-		finally:
-			print("Stopping everything")
-			self.asserv.stop()
-
-	def play(self):
-		raise NotImplementedError("Scenario needs a play method")
-
-	def lidar_detect(self, dst, theta, x, y):
-		print(f"Obs {x}, {y}, {dst} {np.degrees(theta)}")
-		if self.started:
-			self.asserv.notify_stop()
-
-	def lidar_cleared(self):
-		if self.started and self.ultra_restart:
-			self.asserv.notify_stop_clear()
-
-	def get_rel_pos(self):
-		dst, theta = self.asserv.get_pos()
-		x,y = self.asserv.get_pos_xy()
-		theta += self.start_theta
-		return x,y,theta
-
-	def get_pos(self, x_off=0, y_off=0):
-		x,y,theta = self.get_rel_pos()
-
-		cos_tht = np.cos(theta)
-		sin_tht = np.sin(theta)
-		x += cos_tht*x_off - sin_tht*y_off + self.start_x
-		y += sin_tht*x_off + cos_tht*y_off + self.start_y
-
-		return x,y,theta
+			self.start_info.attends()
