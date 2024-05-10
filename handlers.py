@@ -435,15 +435,21 @@ class Scenario(BaseScenario):
 		self.disp = DisplayHandler(asserv=self.asserv, action=self.action, jumper=self.jumper, thread=False)
 
 	@inst
-	def arm_deploy(self, left, deploy, **kwargs):
+	def arm_deploy(self, left, deploy, half=False, **kwargs):
 		if left:
 			if deploy:
-				self.action.left_arm_deploy(**kwargs)
+				if half:
+					self.action.left_arm_half_deploy(**kwargs)
+				else:
+					self.action.left_arm_deploy(**kwargs)
 			else:
 				self.action.left_arm_fold(**kwargs)
 		else:
 			if deploy:
-				self.action.right_arm_deploy(**kwargs)
+				if half:
+					self.action.right_arm_half_deploy(**kwargs)
+				else:
+					self.action.right_arm_deploy(**kwargs)
 			else:
 				self.action.right_arm_fold(**kwargs)
 

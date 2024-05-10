@@ -37,13 +37,16 @@ START_THETA = 0 if BLUE_SIDE else math.radians(180)
 class CustomScenario(handlers.Scenario):
 	def play(self):
 		#self.move(275-(ROBOT_LENGTH-ARM_OFFSET_TO_FRONT), 0)
-		self.move(1500)
+		#self.move(1500)
 		self.move(215)
 		for i in range(3):
 			self.arm_deploy(not BLUE_SIDE, True)
 			self.arm_turn(not BLUE_SIDE, SIDE_DIR*90)
 			self.add_score(5)
-			self.arm_deploy(not BLUE_SIDE, False)
+			if i == 2:
+				self.arm_deploy(not BLUE_SIDE, False)
+			else:
+				self.arm_deploy(not BLUE_SIDE, True, True)
 
 			if i != 2:
 				self.move(220)

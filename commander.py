@@ -386,6 +386,10 @@ class ActionCommander(BaseCommander):
 		"""Deploys the right arm"""
 		self.pico.right_arm_deploy()
 
+	def do_arhdeploy(self, arg):
+		"""Half deploys the right arm"""
+		self.pico.right_arm_half_deploy()
+
 	def do_arfold(self, arg):
 		"""Folds the right arm in compact position"""
 		self.pico.right_arm_fold()
@@ -413,6 +417,10 @@ class ActionCommander(BaseCommander):
 	def do_aldeploy(self, arg):
 		"""Deploys the left arm"""
 		self.pico.left_arm_deploy()
+
+	def do_alhdeploy(self, arg):
+		"""Half deploys the left arm"""
+		self.pico.left_arm_half_deploy()
 
 	def do_alfold(self, arg):
 		"""Folds the left arm in compact position"""

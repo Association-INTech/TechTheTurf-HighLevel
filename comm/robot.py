@@ -352,6 +352,10 @@ class Action(PicoBase):
 		self.write_cmd(2 | (0 << 4))
 
 	@block_cmd()
+	def right_arm_half_deploy(self):
+		self.write_cmd(2 | (5 << 4))
+
+	@block_cmd()
 	def right_arm_fold(self):
 		self.write_cmd(2 | (1 << 4))
 
@@ -362,6 +366,10 @@ class Action(PicoBase):
 	@block_cmd()
 	def left_arm_deploy(self):
 		self.write_cmd(3 | (0 << 4))
+
+	@block_cmd()
+	def left_arm_half_deploy(self):
+		self.write_cmd(3 | (5 << 4))
 
 	@block_cmd()
 	def left_arm_fold(self):
