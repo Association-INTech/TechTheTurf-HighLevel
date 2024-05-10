@@ -120,8 +120,8 @@ class LidarHandler:
 					px = x + dst*np.cos(theta+ang)
 					py = y + dst*np.sin(theta+ang)
 
-					#if px < self.margin or px > self.length-self.margin or py < self.margin or py > self.width-self.margin:
-					#	continue
+					if px < self.margin or px > self.length-self.margin or py < self.margin or py > self.width-self.margin:
+						continue
 
 					if dst > self.radius:
 						continue
@@ -372,19 +372,17 @@ class BaseScenario:
 		self.asserv.move_abs(x, y, **kwargs)
 
 	def get_rel_pos(self):
-		dst, theta = self.asserv.get_pos()
+		_, theta = self.asserv.get_pos()
 		x,y = self.asserv.get_pos_xy()
 		theta += self.start_theta
 		return x,y,theta
 
 	def get_pos(self, x_off=0, y_off=0):
-		x,y,theta = self.get_rel_pos()
-
+		x_rel,y_rel, theta = self.get_rel_pos()  #absolutely digusting and misleading naming of get_rel_pos, output absolute theta. Braindead monkey kys
 		cos_tht = np.cos(theta)
 		sin_tht = np.sin(theta)
-		x += cos_tht*x_off - sin_tht*y_off + self.start_x
-		y += sin_tht*x_off + cos_tht*y_off + self.start_y
-
+		x = self.start_x + np.cos(self.start_theta)*x_rel+cos_tht*x_off - sin_tht*y_off
+		y = self.start_y + np.cos(self.start_theta)*y_rel + sin_tht*x_off + cos_tht*y_off
 		return x,y,theta
 
 	def obs_detect(self, dst, theta, x, y):
