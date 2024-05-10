@@ -388,7 +388,7 @@ class BaseScenario:
 		return x,y,theta
 
 	def obs_detect(self, dst, theta, x, y):
-		print(f"Obs {x}, {y}, {dst} {np.degrees(theta)}")
+		print(f"Obs x={x}, y={y}, dst={dst} theta(deg) = {np.degrees(theta)}")
 		if self.started:
 			self.asserv.notify_stop()
 
