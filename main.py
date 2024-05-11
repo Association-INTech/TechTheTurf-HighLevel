@@ -11,7 +11,7 @@ BLUE_SIDE = sys.argv[1] == "b"
 # Only run on negative edge of jumper switch
 JUMPER_SAFE = False
 # Continues after the obstacle is no more
-RESTART_AFTER_OBS_CLEAR = False
+RESTART_AFTER_OBS_CLEAR = True
 # Pretty self explanatory
 LIDAR_DETECT_RADIUS = 450
 # Only check with table bounds - margin for lidar
@@ -21,6 +21,7 @@ BORDER_SETUP_OFFSET = 35
 # Time to wait between commands
 INST_WAIT = 0.3
 NUC_IP = "192.168.8.125"
+#NUC_IP = None
 
 # ===========================
 
@@ -37,37 +38,47 @@ START_THETA = 0 if BLUE_SIDE else math.radians(180)
 class CustomScenario(handlers.Scenario):
 	def play(self):
 		#self.move(275-(ROBOT_LENGTH-ARM_OFFSET_TO_FRONT), 0)
-		#self.move(1500)
+		self
 		self.move(215)
 		for i in range(3):
 			self.arm_deploy(not BLUE_SIDE, True)
 			self.arm_turn(not BLUE_SIDE, SIDE_DIR*90)
 			self.add_score(5)
-			if i == 2:
-				self.arm_deploy(not BLUE_SIDE, False)
-			else:
-				self.arm_deploy(not BLUE_SIDE, True, True)
+			#if i == 2:
+			#	self.arm_deploy(not BLUE_SIDE, False, blocking=False)
+			#else:
+			self.arm_deploy(not BLUE_SIDE, True, True, blocking=False)
 
 			if i != 2:
 				self.move(220)
 
-		#self.move(550)
-		#for i in range(3):
-		#	self.arm_deploy(not BLUE_SIDE, True)
-		#	self.arm_turn(not BLUE_SIDE, SIDE_DIR*90)
-		#	self.add_score(5)
-		#	self.arm_deploy(not BLUE_SIDE, False)
+		self.move(550)
+		for i in range(3):
+			self.arm_deploy(not BLUE_SIDE, True)
+			self.arm_turn(not BLUE_SIDE, SIDE_DIR*90)
+			self.add_score(5)
+			if i == 2:
+				self.arm_deploy(not BLUE_SIDE, False, blocking=False)
+			else:
+				self.arm_deploy(not BLUE_SIDE, True, True, blocking=False)
 
-		#	if i != 2:
-		#		self.move(220)
+			if i != 2:
+				self.move(220)
+
+		self.move(-(150+225+225+550+225+225))
+		self.turn(SIDE_DIR*90)
+		self.move(handlers.ROBOT_WIDTH+325*2+450+155-20)
+		"""
 		self.move(275)
 		self.turn(SIDE_DIR*90)
 		self.move(handlers.ROBOT_WIDTH+325*2+450+155)
-		self.turn(SIDE_DIR*90)#+550+225*2
+		self.turn(SIDE_DIR*90) # +550+225*2
 		self.move(225*2+75+200, blocking=False)
 		time.sleep(10)
 		self.asserv.stop()
 		self.add_score(10)
+		"""
+
 		#time.sleep(5)
 		"""
 		self.move(0, math.radians(SIDE_DIR*90))

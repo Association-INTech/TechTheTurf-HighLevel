@@ -469,7 +469,7 @@ if __name__ == "__main__":
 		commander = AsservCommander(asserv)
 
 	if args.debug:
-		scr_handler = handlers.DisplayHandler(action=action, asserv=asserv, debug=True)
+		scr_handler = handlers.DisplayHandler(action=action, asserv=asserv, debug=True, thread=True)
 		scr_handler.start()
 
 	# Run the cmd loop

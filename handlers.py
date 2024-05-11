@@ -17,7 +17,7 @@ except Exception:
 import metacom.mqtt as mqtt
 
 # General constants
-MATCH_PLAY_TIME = 100
+MATCH_PLAY_TIME = 99
 INST_WAIT = 1
 
 # Physical constants
@@ -115,7 +115,7 @@ class LidarHandler:
 
 				detected = None
 				for ang, dst in dsts:
-					if abs(ang) > np.radians(45):
+					if abs(ang) > np.radians(60):
 						continue
 					px = x + dst*np.cos(theta+ang)
 					py = y + dst*np.sin(theta+ang)
@@ -123,13 +123,14 @@ class LidarHandler:
 					if px < self.margin or px > self.length-self.margin or py < self.margin or py > self.width-self.margin:
 						continue
 
-					if dst > self.radius:
+					# Multiply by cos of angle to get a straight line
+					if dst > self.radius*np.cos(ang):
 						continue
 
 					detected = dst,ang,px,py
 					break
 
-				#print(x,y,theta)
+				#print(f"x={x:.2f} y={y:.2f} tht={np.degrees(theta):.2f}")
 				if detected is not None:
 					self.detected_func(*detected)
 					has_detected = True
@@ -137,7 +138,7 @@ class LidarHandler:
 					if has_detected and self.cleared_func is not None:
 						self.cleared_func()
 					has_detected = False
-				time.sleep(0.05)
+				time.sleep(0.025)
 			except Exception as e:
 				print(f"Lidar thread Exception: {e}")
 
@@ -374,19 +375,33 @@ class BaseScenario:
 	def get_rel_pos(self):
 		_, theta = self.asserv.get_pos()
 		x,y = self.asserv.get_pos_xy()
-		theta += self.start_theta
 		return x,y,theta
 
 	def get_pos(self, x_off=0, y_off=0):
-		x_rel,y_rel, theta = self.get_rel_pos()  #absolutely digusting and misleading naming of get_rel_pos, output absolute theta. Braindead monkey kys
+		x_rel,y_rel, theta_rel = self.get_rel_pos()
+
+		# Rotate the x and y axis to the start angle
+		# to bring it back to the table ref.
+		cos_tht_st = np.cos(self.start_theta)
+		sin_tht_st = np.sin(self.start_theta)
+		x_rel_table = cos_tht_st*x_rel - sin_tht_st*y_rel
+		y_rel_table = sin_tht_st*x_rel + cos_tht_st*y_rel
+
+		# Project the offset in the table
+		theta = theta_rel+self.start_theta
 		cos_tht = np.cos(theta)
 		sin_tht = np.sin(theta)
-		x = self.start_x + np.cos(self.start_theta)*x_rel+cos_tht*x_off - sin_tht*y_off
-		y = self.start_y + np.cos(self.start_theta)*y_rel + sin_tht*x_off + cos_tht*y_off
+		x_off_table = cos_tht*x_off - sin_tht*y_off
+		y_off_table = sin_tht*x_off + cos_tht*y_off
+
+		# Add everything
+		x = self.start_x + x_rel_table + x_off_table
+		y = self.start_y + y_rel_table + y_off_table
+
 		return x,y,theta
 
 	def obs_detect(self, dst, theta, x, y):
-		print(f"Obs x={x}, y={y}, dst={dst} theta(deg) = {np.degrees(theta)}")
+		print(f"Obs x={x}, y={y}, dst={dst} theta(deg)={np.degrees(theta)}")
 		if self.started:
 			self.asserv.notify_stop()
 

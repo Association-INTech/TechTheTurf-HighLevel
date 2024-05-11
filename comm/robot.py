@@ -73,7 +73,7 @@ class I2CBase:
 		return struct.unpack(ENDIANNESS + fmt, ret)
 
 # A decorator to block until the command has finished
-def block_cmd(stoppable=False):
+def block_cmd(stoppable=False, move_func=False):
 
 	def decorator(func):
 
@@ -87,10 +87,17 @@ def block_cmd(stoppable=False):
 				del kwargs["blocking"]
 
 			# If this is a new stoppable command, wait until we're back running
-			if stoppable:
+			if stoppable and not self.running_flag.is_set():
 				self.running_flag.wait()
 
+			if move_func:
+				cons_rho, cons_theta = args
+				old_rho, old_theta = self.get_pos()
+
 			# Call the function normally
+			#print(f"func: {func} {args} {kwargs}")
+			#if move_func:
+			#	print(f"Move {cons_rho:.2f} {cons_theta:.2f}")
 			func(self, *args, **kwargs)
 
 			# If we're simulating, don't block at all
@@ -103,8 +110,19 @@ def block_cmd(stoppable=False):
 
 			# After an emergency stop, we've reached target so the blocking finishes
 			# We still want to block until we can start running again.
-			if stoppable:
+			if stoppable and not self.running_flag.is_set():
 				self.running_flag.wait()
+
+				if move_func:
+					new_rho, new_theta = self.get_pos()
+					diff_rho, diff_theta = new_rho-old_rho, new_theta-old_theta
+					new_cons_rho, new_cons_theta = cons_rho-diff_rho, cons_theta-diff_theta
+					if cons_theta == 0:
+						new_cons_theta = 0
+					if cons_rho == 0:
+						new_cons_rho = 0
+					print(f"Restart {new_cons_rho:.2f} {new_cons_theta:.2f} {kwargs}")
+					inner(self, new_cons_rho, new_cons_theta, blocking=blocking, **kwargs)
 
 		return inner
 
@@ -225,7 +243,7 @@ class Asserv(PicoBase):
 
 	# Write registers/ orders
 
-	@block_cmd(stoppable=True)
+	@block_cmd(stoppable=True, move_func=True)
 	def move(self, rho, theta):
 		self.write_struct(1, "ff", rho, theta)
 
