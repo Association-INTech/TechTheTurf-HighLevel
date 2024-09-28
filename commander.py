@@ -276,9 +276,18 @@ class AsservCommander(BaseCommander):
 		for i in range(4):
 			print(i)
 			self.pico.move(side_len, 0)
-			time.sleep(2)
+			#time.sleep(2)
 			self.pico.move(0, math.radians(90))
-			time.sleep(2)
+			#time.sleep(2)
+
+	def do_deff(self, arg):
+		"""deff <auto> <blinker> <stop> <center stop> <headlight>"""
+		if not arg or len(arg.split()) != 5:
+			print("No values")
+			return
+		args = arg.split()
+		auto,blink,stop,cstop,hd = str_to_bool(args[0]), comm.robot.BlinkerState(int(args[1])), str_to_bool(args[2]), str_to_bool(args[3]), comm.robot.HeadlightState(int(args[4]))
+		self.pico.debug_set_effects(auto, blink, stop, cstop, hd)
 
 
 class ActionCommander(BaseCommander):

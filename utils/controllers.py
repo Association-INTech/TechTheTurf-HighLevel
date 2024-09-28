@@ -122,6 +122,37 @@ class PS4(Gamepad):
         }
         self._setupReverseMaps()
 
+class RandomPad(Gamepad):
+    fullName = 'Random ass fucking garbage gamepad'
+
+    def __init__(self, joystickNumber = 0):
+        Gamepad.__init__(self, joystickNumber)
+        self.axisNames = {
+            0: 'LEFT-X',
+            1: 'LEFT-Y',
+            5: 'L2',
+            2: 'RIGHT-X',
+            3: 'RIGHT-Y',
+            4: 'R2',
+            6: 'DPAD-X',
+            7: 'DPAD-Y'
+        }
+        self.buttonNames = {
+            0:  'CROSS',
+            1:  'CIRCLE',
+            2:  'TRIANGLE',
+            3:  'SQUARE',
+            6:  'L1',
+            7:  'R1',
+            8:  'L2',
+            9:  'R2',
+            11: 'START',
+            10: 'PS',
+            13: 'L3',
+            14: 'R3'
+        }
+        self._setupReverseMaps()
+
 
 # PS4 controller settings for older Raspbian versions
 #class PS4(Gamepad):

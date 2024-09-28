@@ -3,6 +3,7 @@ import struct
 import time
 import math
 import threading
+from enum import Enum
 
 from . import telemetry
 
@@ -204,6 +205,18 @@ class PicoBase(I2CBase):
 		while not self.ready_for_order():
 			time.sleep(1.0/POLLING_RATE)
 
+class BlinkerState(Enum):
+	NONE = 0
+	LEFT = 1
+	RIGHT = 2
+	WARNING = 3
+	ESTOP = 4
+
+class HeadlightState(Enum):
+	OFF = 0
+	DIM = 1
+	FULL = 2
+
 # Class for the pico that handles moving
 
 class Asserv(PicoBase):
@@ -324,6 +337,9 @@ class Asserv(PicoBase):
 
 	def debug_get_right_bg_stats(self):
 		return self.read_struct(11 | (6 << 4), "ffff")
+
+	def debug_set_effects(self, auto: bool, blinker: BlinkerState, stop: bool, center_stop: bool, headlight: HeadlightState):
+		self.write_struct(11 | (7 << 4), "?B??B", auto, blinker.value, stop, center_stop, headlight.value)
 
 # Class for the pico that handles actuators
 
