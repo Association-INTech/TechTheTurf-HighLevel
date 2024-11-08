@@ -206,7 +206,7 @@ class PicoBase(I2CBase):
 			time.sleep(1.0/POLLING_RATE)
 
 class BlinkerState(Enum):
-	NONE = 0
+	OFF = 0
 	LEFT = 1
 	RIGHT = 2
 	WARNING = 3
@@ -216,6 +216,16 @@ class HeadlightState(Enum):
 	OFF = 0
 	DIM = 1
 	FULL = 2
+
+class ControlState(Enum):
+	AUTOMATIC = 0
+	MANUAL = 1
+	GAY = 2
+
+class RingState(Enum):
+	OFF = 0
+	RAINBOW = 1
+	SPEED = 2
 
 # Class for the pico that handles moving
 
@@ -338,8 +348,8 @@ class Asserv(PicoBase):
 	def debug_get_right_bg_stats(self):
 		return self.read_struct(11 | (6 << 4), "ffff")
 
-	def debug_set_effects(self, auto: bool, blinker: BlinkerState, stop: bool, center_stop: bool, headlight: HeadlightState):
-		self.write_struct(11 | (7 << 4), "?B??B", auto, blinker.value, stop, center_stop, headlight.value)
+	def debug_set_effects(self, control: ControlState, blinker: BlinkerState, stop: bool, center_stop: bool, headlight: HeadlightState, ring: RingState):
+		self.write_struct(11 | (7 << 4), "BB??BB", control.value, blinker.value, stop, center_stop, headlight.value, ring.value)
 
 # Class for the pico that handles actuators
 

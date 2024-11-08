@@ -281,13 +281,13 @@ class AsservCommander(BaseCommander):
 			#time.sleep(2)
 
 	def do_deff(self, arg):
-		"""deff <auto> <blinker> <stop> <center stop> <headlight>"""
-		if not arg or len(arg.split()) != 5:
+		"""deff <controlState> <blinker> <stop> <center stop> <headlight> <ring>"""
+		if not arg or len(arg.split()) != 6:
 			print("No values")
 			return
 		args = arg.split()
-		auto,blink,stop,cstop,hd = str_to_bool(args[0]), comm.robot.BlinkerState(int(args[1])), str_to_bool(args[2]), str_to_bool(args[3]), comm.robot.HeadlightState(int(args[4]))
-		self.pico.debug_set_effects(auto, blink, stop, cstop, hd)
+		cstate,blink,stop,cstop,hd,rs = comm.robot.ControlState(int(args[0])), comm.robot.BlinkerState(int(args[1])), str_to_bool(args[2]), str_to_bool(args[3]), comm.robot.HeadlightState(int(args[4])), comm.robot.RingState(int(args[5]))
+		self.pico.debug_set_effects(cstate, blink, stop, cstop, hd, rs)
 
 
 class ActionCommander(BaseCommander):

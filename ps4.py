@@ -147,9 +147,12 @@ proMode = False
 asserv.debug_set_motors_enable(True)
 
 try:
-	blinkState = comm.robot.BlinkerState.NONE
+	controlState = comm.robot.ControlState.MANUAL
+	blinkState = comm.robot.BlinkerState.OFF
 	lastArmRightTurn = 0
+	lastArmLeftTurn = 0
 	headlightState = comm.robot.HeadlightState.OFF
+	ringState = comm.robot.RingState.OFF
 	while gamepad.isConnected():
 		dt = end-st
 		st = time.time()
@@ -157,7 +160,8 @@ try:
 		if gamepad.beenPressed(btnExit):
 			state = not state
 			proMode = False
-			asserv.debug_set_motors_enable(False)
+			for i in range(50):
+				asserv.debug_set_motors_enable(False)
 			asserv.set_running(state)
 			dst = 0
 			theta = 0
@@ -166,7 +170,8 @@ try:
 
 		if gamepad.beenPressed(btnPro) and state:
 			if proMode:
-				asserv.debug_set_motors_enable(False)
+				for i in range(50):
+					asserv.debug_set_motors_enable(False)
 				asserv.set_running(True)
 				asserv.wait_completed()
 				dst = 0
@@ -177,10 +182,10 @@ try:
 			else:
 				asserv.set_running(False)
 				asserv.wait_completed()
-				asserv.debug_set_motors_enable(True)
+				for i in range(50):
+					asserv.debug_set_motors_enable(True)
 				proMode = True
 				print("ProMode on")
-
 
 		if ACTION_ENABLED:
 			if gamepad.beenPressed(btnLeftArm):
@@ -229,24 +234,25 @@ try:
 				action.right_arm_turn(arm_turn_speed*armRightTurn*dt)
 
 		if proMode:
-			asserv.debug_set_motors(speed * math.cos(math.pi/4) - turn * math.sin(math.pi/4), speed * math.sin(math.pi/4) + turn * math.cos(math.pi/4))
+			scaling = 1.0 if PAMI else 20.0+120.0*turbo-5.0*slow
+			asserv.debug_set_motors(scaling * (speed * math.cos(math.pi/4) - turn * math.sin(math.pi/4)), scaling * (speed * math.sin(math.pi/4) + turn * math.cos(math.pi/4)))
 		else:
 			asserv.debug_set_target(dst, theta)
 
 		if PAMI:
 			if gamepad.beenPressed(btnWarning):
 				if blinkState == comm.robot.BlinkerState.WARNING:
-					blinkState = comm.robot.BlinkerState.NONE
+					blinkState = comm.robot.BlinkerState.OFF
 				else:
 					blinkState = comm.robot.BlinkerState.WARNING
 			elif armRightTurn < 0 and lastArmRightTurn >= 0:
 				if blinkState == comm.robot.BlinkerState.LEFT:
-					blinkState = comm.robot.BlinkerState.NONE
+					blinkState = comm.robot.BlinkerState.OFF
 				else:
 					blinkState = comm.robot.BlinkerState.LEFT
 			elif armRightTurn > 0 and lastArmRightTurn <= 0:
 				if blinkState == comm.robot.BlinkerState.RIGHT:
-					blinkState = comm.robot.BlinkerState.NONE
+					blinkState = comm.robot.BlinkerState.OFF
 				else:
 					blinkState = comm.robot.BlinkerState.RIGHT
 
@@ -258,9 +264,22 @@ try:
 				elif headlightState == comm.robot.HeadlightState.FULL:
 					headlightState = comm.robot.HeadlightState.OFF
 
-			lastArmRightTurn = armRightTurn
+			if gamepad.beenPressed(btnDeploy):
+				if controlState == comm.robot.ControlState.MANUAL:
+					controlState = comm.robot.ControlState.GAY
+				else:
+					controlState = comm.robot.ControlState.MANUAL
 
-			asserv.debug_set_effects(False, blinkState, stopping, True, headlightState)
+			if armLeftTurn < 0 and lastArmLeftTurn >= 0:
+				if ringState == comm.robot.RingState.OFF:
+					ringState = comm.robot.RingState.RAINBOW
+				else:
+					ringState = comm.robot.RingState.OFF
+
+			lastArmRightTurn = armRightTurn
+			lastArmLeftTurn = armLeftTurn
+
+			asserv.debug_set_effects(controlState, blinkState, stopping, True, headlightState, ringState)
 		time.sleep(1.0/UPDATE_FREQ)
 		end = time.time()
 
@@ -271,7 +290,7 @@ finally:
 	gamepad.disconnect()
 
 	asserv.debug_set_motors_enable(False)
-	asserv.debug_set_effects(True, comm.robot.BlinkerState.NONE, False, True, comm.robot.HeadlightState.OFF)
+	asserv.debug_set_effects(comm.robot.ControlState.AUTOMATIC, comm.robot.BlinkerState.OFF, False, True, comm.robot.HeadlightState.OFF, comm.robot.RingState.OFF)
 	asserv.stop()
 	asserv.wait_completed()
 
