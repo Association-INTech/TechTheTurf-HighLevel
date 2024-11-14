@@ -351,8 +351,8 @@ class Asserv(PicoBase):
 	def debug_get_right_bg_stats(self):
 		return self.read_struct(11 | (6 << 4), "ffff")
 
-	def debug_set_effects(self, control: ControlState, blinker: BlinkerState, stop: bool, center_stop: bool, headlight: HeadlightState, ring: RingState):
-		self.write_struct(11 | (7 << 4), "BB??BB", control.value, blinker.value, stop, center_stop, headlight.value, ring.value)
+	def debug_set_effects(self, control: ControlState, blinker: BlinkerState = BlinkerState.OFF, stop: bool = False, center_stop: bool = False, headlight: HeadlightState = HeadlightState.OFF, ring: RingState = RingState.OFF, disco: bool = False):
+		self.write_struct(11 | (7 << 4), "BB??BB?", control.value, blinker.value, stop, center_stop, headlight.value, ring.value, disco)
 
 	def debug_set_rgb(self, rgb: int, brightness: int):
 		self.write_struct(11 | (8 << 4), "IB", rgb, brightness)

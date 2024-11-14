@@ -282,12 +282,12 @@ class AsservCommander(BaseCommander):
 
 	def do_deff(self, arg):
 		"""deff <controlState> <blinker> <stop> <center stop> <headlight> <ring>"""
-		if not arg or len(arg.split()) != 6:
+		if not arg or len(arg.split()) != 7:
 			print("No values")
 			return
 		args = arg.split()
-		cstate,blink,stop,cstop,hd,rs = comm.robot.ControlState(int(args[0])), comm.robot.BlinkerState(int(args[1])), str_to_bool(args[2]), str_to_bool(args[3]), comm.robot.HeadlightState(int(args[4])), comm.robot.RingState(int(args[5]))
-		self.pico.debug_set_effects(cstate, blink, stop, cstop, hd, rs)
+		cstate,blink,stop,cstop,hd,rs,disco = comm.robot.ControlState(int(args[0])), comm.robot.BlinkerState(int(args[1])), str_to_bool(args[2]), str_to_bool(args[3]), comm.robot.HeadlightState(int(args[4])), comm.robot.RingState(int(args[5])), str_to_bool(args[6])
+		self.pico.debug_set_effects(cstate, blink, stop, cstop, hd, rs, disco)
 
 	def do_drgb(self, arg):
 		"""drgb <rgb>"""
@@ -305,15 +305,15 @@ class AsservCommander(BaseCommander):
 
 	def do_dea(self, arg):
 		"""Go to effect auto"""
-		self.pico.debug_set_effects(comm.robot.ControlState.AUTOMATIC, comm.robot.BlinkerState.OFF, False, False, comm.robot.HeadlightState.OFF, comm.robot.RingState.OFF)
+		self.pico.debug_set_effects(comm.robot.ControlState.AUTOMATIC)
 
 	def do_dem(self, arg):
 		"""Go to effect manual"""
-		self.pico.debug_set_effects(comm.robot.ControlState.MANUAL, comm.robot.BlinkerState.OFF, False, False, comm.robot.HeadlightState.OFF, comm.robot.RingState.OFF)
+		self.pico.debug_set_effects(comm.robot.ControlState.MANUAL)
 
 	def do_gay(self, arg):
 		"""Gay mode"""
-		self.pico.debug_set_effects(comm.robot.ControlState.GAY, comm.robot.BlinkerState.OFF, False, False, comm.robot.HeadlightState.OFF, comm.robot.RingState.OFF)
+		self.pico.debug_set_effects(comm.robot.ControlState.GAY)
 
 
 class ActionCommander(BaseCommander):
