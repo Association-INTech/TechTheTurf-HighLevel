@@ -289,6 +289,32 @@ class AsservCommander(BaseCommander):
 		cstate,blink,stop,cstop,hd,rs = comm.robot.ControlState(int(args[0])), comm.robot.BlinkerState(int(args[1])), str_to_bool(args[2]), str_to_bool(args[3]), comm.robot.HeadlightState(int(args[4])), comm.robot.RingState(int(args[5]))
 		self.pico.debug_set_effects(cstate, blink, stop, cstop, hd, rs)
 
+	def do_drgb(self, arg):
+		"""drgb <rgb>"""
+		if not arg or len(arg.split()) != 2:
+			print("No values")
+			return
+		asplit = arg.split()
+		try:
+			val = int(asplit[0], 16)
+			bright = int(asplit[1])
+		except Exception:
+			print("wrong value")
+			return
+		self.pico.debug_set_rgb(val, bright)
+
+	def do_dea(self, arg):
+		"""Go to effect auto"""
+		self.pico.debug_set_effects(comm.robot.ControlState.AUTOMATIC, comm.robot.BlinkerState.OFF, False, False, comm.robot.HeadlightState.OFF, comm.robot.RingState.OFF)
+
+	def do_dem(self, arg):
+		"""Go to effect manual"""
+		self.pico.debug_set_effects(comm.robot.ControlState.MANUAL, comm.robot.BlinkerState.OFF, False, False, comm.robot.HeadlightState.OFF, comm.robot.RingState.OFF)
+
+	def do_gay(self, arg):
+		"""Gay mode"""
+		self.pico.debug_set_effects(comm.robot.ControlState.GAY, comm.robot.BlinkerState.OFF, False, False, comm.robot.HeadlightState.OFF, comm.robot.RingState.OFF)
+
 
 class ActionCommander(BaseCommander):
 	def __init__(self, action):

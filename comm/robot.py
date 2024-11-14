@@ -218,14 +218,17 @@ class HeadlightState(Enum):
 	FULL = 2
 
 class ControlState(Enum):
-	AUTOMATIC = 0
-	MANUAL = 1
-	GAY = 2
+	OFF = 0
+	AUTOMATIC = 1
+	MANUAL = 2
+	GAY = 3
 
 class RingState(Enum):
 	OFF = 0
 	RAINBOW = 1
 	SPEED = 2
+	CHASE = 3
+	WIPER = 4
 
 # Class for the pico that handles moving
 
@@ -350,6 +353,9 @@ class Asserv(PicoBase):
 
 	def debug_set_effects(self, control: ControlState, blinker: BlinkerState, stop: bool, center_stop: bool, headlight: HeadlightState, ring: RingState):
 		self.write_struct(11 | (7 << 4), "BB??BB", control.value, blinker.value, stop, center_stop, headlight.value, ring.value)
+
+	def debug_set_rgb(self, rgb: int, brightness: int):
+		self.write_struct(11 | (8 << 4), "IB", rgb, brightness)
 
 # Class for the pico that handles actuators
 
