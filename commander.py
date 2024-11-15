@@ -315,6 +315,10 @@ class AsservCommander(BaseCommander):
 		"""Gay mode"""
 		self.pico.debug_set_effects(comm.robot.ControlState.GAY)
 
+	def do_straight(self, arg):
+		"""Go back to normal auto mode"""
+		self.do_dea(arg)
+
 
 class ActionCommander(BaseCommander):
 	def __init__(self, action):
