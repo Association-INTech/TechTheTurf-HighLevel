@@ -3,6 +3,7 @@ import sys
 import math
 
 import comm
+from comm.robot import RingState
 import utils.gamepad as pad
 
 UPDATE_FREQ = 100.0
@@ -222,6 +223,7 @@ try:
 
 		dstVelVal = dstVel.apply(move_spd_adj*speed,dt)
 		stopping = abs(dstVelVal) > 0 and speed == 0
+		reversing = abs(dstVelVal) > 0 and speed < 0
 		dst += dstVelVal*dt
 		theta += turn_spd_adj*turn*dt
 
@@ -271,15 +273,15 @@ try:
 					controlState = comm.robot.ControlState.MANUAL
 
 			if armLeftTurn < 0 and lastArmLeftTurn >= 0:
-				if ringState == comm.robot.RingState.OFF:
-					ringState = comm.robot.RingState.RAINBOW
-				else:
+				try:
+					ringState = comm.robot.RingState(ringState.value+1)
+				except Exception:
 					ringState = comm.robot.RingState.OFF
 
 			lastArmRightTurn = armRightTurn
 			lastArmLeftTurn = armLeftTurn
 
-			asserv.debug_set_effects(controlState, blinkState, stopping, True, headlightState, ringState)
+			asserv.debug_set_effects(controlState, blinkState, stopping, True, headlightState, ringState, False, reversing)
 		time.sleep(1.0/UPDATE_FREQ)
 		end = time.time()
 

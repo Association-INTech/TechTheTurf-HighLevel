@@ -12,11 +12,11 @@ def str_to_bool(val):
 		return True
 	elif val in ["off", "false", "0"]:
 		return False
-	else:
-		return None
+	
+	return False
 
 class BaseCommander(cmd.Cmd):
-	def __init__(self, pico):
+	def __init__(self, pico: comm.robot.PicoBase):
 		super(BaseCommander, self).__init__()
 		self.pico = pico
 		self.started = False
@@ -102,7 +102,9 @@ class BaseCommander(cmd.Cmd):
 
 
 class AsservCommander(BaseCommander):
-	def __init__(self, asserv):
+	pico: comm.robot.Asserv
+
+	def __init__(self, asserv: comm.robot.Asserv):
 		super(AsservCommander, self).__init__(asserv)
 
 	def do_pos(self, arg):
@@ -281,13 +283,13 @@ class AsservCommander(BaseCommander):
 			#time.sleep(2)
 
 	def do_deff(self, arg):
-		"""deff <controlState> <blinker> <stop> <center stop> <headlight> <ring>"""
-		if not arg or len(arg.split()) != 7:
+		"""deff <controlState> <blinker> <stop> <center stop> <headlight> <ring> <disco> <reversing>"""
+		if not arg or len(arg.split()) != 8:
 			print("No values")
 			return
 		args = arg.split()
-		cstate,blink,stop,cstop,hd,rs,disco = comm.robot.ControlState(int(args[0])), comm.robot.BlinkerState(int(args[1])), str_to_bool(args[2]), str_to_bool(args[3]), comm.robot.HeadlightState(int(args[4])), comm.robot.RingState(int(args[5])), str_to_bool(args[6])
-		self.pico.debug_set_effects(cstate, blink, stop, cstop, hd, rs, disco)
+		cstate,blink,stop,cstop,hd,rs,disco,rev = comm.robot.ControlState(int(args[0])), comm.robot.BlinkerState(int(args[1])), str_to_bool(args[2]), str_to_bool(args[3]), comm.robot.HeadlightState(int(args[4])), comm.robot.RingState(int(args[5])), str_to_bool(args[6]), str_to_bool(args[7])
+		self.pico.debug_set_effects(cstate, blink, stop, cstop, hd, rs, disco, rev)
 
 	def do_drgb(self, arg):
 		"""drgb <rgb>"""
@@ -321,7 +323,9 @@ class AsservCommander(BaseCommander):
 
 
 class ActionCommander(BaseCommander):
-	def __init__(self, action):
+	pico: comm.robot.Action
+
+	def __init__(self, action: comm.robot.Action):
 		super(ActionCommander, self).__init__(action)
 
 	def do_demo(self, arg):
