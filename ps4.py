@@ -85,6 +85,7 @@ joyArmRightTurn = "DPAD-X"
 btnWarning = "TRIANGLE"
 btnHeadlights = "SQUARE"
 btnPro = "CIRCLE"
+btnSmoke = "R3"
 
 # State variables
 dstVel = LimitedValue(speed_accel_lim)
@@ -154,6 +155,7 @@ try:
 	lastArmLeftTurn = 0
 	headlightState = comm.robot.HeadlightState.OFF
 	ringState = comm.robot.RingState.OFF
+	smoking = False
 	while gamepad.isConnected():
 		dt = end-st
 		st = time.time()
@@ -278,10 +280,13 @@ try:
 				except Exception:
 					ringState = comm.robot.RingState.OFF
 
+			if gamepad.beenPressed(btnSmoke):
+				smoking = not smoking
+
 			lastArmRightTurn = armRightTurn
 			lastArmLeftTurn = armLeftTurn
 
-			asserv.debug_set_effects(controlState, blinkState, stopping, True, headlightState, ringState, False, reversing)
+			asserv.debug_set_effects(controlState, blinkState, stopping, True, headlightState, ringState, False, reversing, smoking)
 		time.sleep(1.0/UPDATE_FREQ)
 		end = time.time()
 

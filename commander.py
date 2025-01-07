@@ -283,16 +283,16 @@ class AsservCommander(BaseCommander):
 			#time.sleep(2)
 
 	def do_deff(self, arg):
-		"""deff <controlState> <blinker> <stop> <center stop> <headlight> <ring> <disco> <reversing>"""
-		if not arg or len(arg.split()) != 8:
+		"""deff <controlState> <blinker> <stop> <center stop> <headlight> <ring> <disco> <reversing> <smoke>"""
+		if not arg or len(arg.split()) != 9:
 			print("No values")
 			return
 		args = arg.split()
-		cstate,blink,stop,cstop,hd,rs,disco,rev = comm.robot.ControlState(int(args[0])), comm.robot.BlinkerState(int(args[1])), str_to_bool(args[2]), str_to_bool(args[3]), comm.robot.HeadlightState(int(args[4])), comm.robot.RingState(int(args[5])), str_to_bool(args[6]), str_to_bool(args[7])
-		self.pico.debug_set_effects(cstate, blink, stop, cstop, hd, rs, disco, rev)
+		cstate,blink,stop,cstop,hd,rs,disco,rev,smoke = comm.robot.ControlState(int(args[0])), comm.robot.BlinkerState(int(args[1])), str_to_bool(args[2]), str_to_bool(args[3]), comm.robot.HeadlightState(int(args[4])), comm.robot.RingState(int(args[5])), str_to_bool(args[6]), str_to_bool(args[7]), str_to_bool(args[8])
+		self.pico.debug_set_effects(cstate, blink, stop, cstop, hd, rs, disco, rev, smoke)
 
 	def do_drgb(self, arg):
-		"""drgb <rgb>"""
+		"""drgb <rgb> <bright>"""
 		if not arg or len(arg.split()) != 2:
 			print("No values")
 			return
