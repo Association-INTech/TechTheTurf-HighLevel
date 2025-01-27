@@ -1,104 +1,148 @@
 import math
-import cmd
 import time
 import argparse
+import cmd2
 
+import enum
 import comm
-import handlers
+try:
+	import handlers
+except Exception as e:
+	print(f"Couldn't import handlers, continuing ({e})")
 
-def str_to_bool(val):
-	val = val.strip().lower()
-	if val in ["on", "true", "1"]:
+
+def str2bool(v):
+	if isinstance(v, bool):
+		return v
+	if v.lower() in {'on', 'yes', 'true', 't', 'y', '1'}:
 		return True
-	elif val in ["off", "false", "0"]:
+	elif v.lower() in {'off', 'no', 'false', 'f', 'n', '0'}:
 		return False
-	
-	return False
+	else:
+		raise argparse.ArgumentTypeError('Boolean value expected.')
 
-class BaseCommander(cmd.Cmd):
+def hex2int(v):
+	return int(v, 16)
+
+class EnumAction(argparse.Action):
+	"""
+	Argparse action for handling Enums
+	"""
+	def __init__(self, **kwargs):
+		# Pop off the type value
+		enum_type = kwargs.pop("type", None)
+
+		# Ensure an Enum subclass is provided
+		if enum_type is None:
+			raise ValueError("type must be assigned an Enum when using EnumAction")
+		if not issubclass(enum_type, enum.Enum):
+			raise TypeError("type must be an Enum when using EnumAction")
+
+		# Generate choices from the Enum
+		kwargs.setdefault("choices", tuple(e.name.lower() for e in enum_type))
+
+		super(EnumAction, self).__init__(**kwargs)
+
+		self._enum = enum_type
+
+	def __call__(self, parser, namespace, values, option_string=None):
+		# Convert value back into an Enum
+		value = None
+		for val in self._enum:
+			if val.name.lower() == values:
+				value = val
+		if value is None:
+			raise argparse.ArgumentTypeError(f"Couldn't find enum {values} from {self._enum}.")
+		setattr(namespace, self.dest, value)
+
+class BaseCommander(cmd2.Cmd):
 	def __init__(self, pico: comm.robot.PicoBase):
+		shortcuts = dict(cmd2.DEFAULT_SHORTCUTS)
+		shortcuts.update({'exit': 'quit'})
 		super(BaseCommander, self).__init__()
 		self.pico = pico
 		self.started = False
 
+	@cmd2.with_category("General")
 	def do_on(self, arg):
 		"""Starts"""
 		if self.started:
-			print("Already on")
+			self.poutput("Already on")
 			return
 
 		self.started = True
 		self.pico.start()
-		print("ON")
+		self.poutput("ON")
 
+	@cmd2.with_category("General")
 	def do_off(self, arg):
 		"""Stops"""
 		if not self.started:
-			print("Already off")
+			self.poutput("Already off")
 			return
 
 		self.started = False
 		self.pico.stop()
-		print("OFF")
+		self.poutput("OFF")
 
-	def do_exit(self, arg):
+	@cmd2.with_category("General")
+	def do_quit(self, arg):
 		"""Stops & quits"""
-		print("Adios")
+		self.poutput("Adios")
 		self.do_off(arg)
 		return True
 
+	@cmd2.with_category("Telemetry")
 	def do_telems(self, arg):
 		"""list all telemetry"""
 		for telem in self.pico.telems.values():
-			print(telem)
+			self.poutput(telem)
 
+	def telem_choices(self):
+		return list(map(lambda x: x.name,self.pico.telems.values()))+["all"]
+
+	stelem_parser = cmd2.Cmd2ArgumentParser()
+	stelem_parser.add_argument('telem', type=str, choices_provider=telem_choices, help="Index/name of telemetry or 'all'")
+	stelem_parser.add_argument('enabled', type=str2bool)
+
+	@cmd2.with_argparser(stelem_parser)
+	@cmd2.with_category("Telemetry")
 	def do_stelem(self, arg):
-		"""stelem (idx/name) on/off: turns on or off selected telemetry"""
-		arg = arg.strip().lower().split()
-		if len(arg) < 2:
-			print("Wrong arguments")
-			return
-
-		arg[1] = str_to_bool(arg[1])
-
-		if arg[1] is None:
-			print("Wrong arguments")
-			return
-
-		if arg[0] == "all":
+		"""Turns on or off selected telemetry"""
+		if arg.telem == "all":
 			for telem in self.pico.telems.values():
-				self.pico.set_telem(telem, arg[1])
+				self.pico.set_telem(telem, arg.enabled)
 			return
 
 		try:
-			idx = int(arg[0])
+			idx = int(arg.telem)
 			telem = self.pico.telem_from_idx(idx)
 		except Exception:
-			telem = self.pico.telem_from_name(arg[0])
-
+			telem = self.pico.telem_from_name(arg.telem)
+		self.poutput(arg.enabled)
 		if not telem:
-			print("Wrong arguments")
+			self.poutput("Couldn't find the telemetry")
 			return
 
-		self.pico.set_telem(telem, arg[1])
+		self.pico.set_telem(telem, arg.enabled)
 
+	@cmd2.with_category("Debug")
 	def do_ready(self, arg):
 		"""ready: checks if the robot is ready to receive a new order"""
 		val = self.pico.ready_for_order()
 		if val:
-			print("Ready")
+			self.poutput("Ready")
 		else:
-			print("Not Ready")
+			self.poutput("Not Ready")
 
+	sb_parser = cmd2.Cmd2ArgumentParser()
+	sb_parser.add_argument('blocking', type=str2bool)
+
+	@cmd2.with_argparser(sb_parser)
+	@cmd2.with_category("Debug")
 	def do_sb(self, arg):
-		"""sb (on/off): enables/disables blocking on commands"""
-		arg = str_to_bool(arg)
-
-		if arg is None:
-			print("Wrong arguments")
-			return
-
-		self.pico.set_blocking(arg)
+		"""enables/disables blocking on commands"""
+		self.pico.set_blocking(arg.blocking)
 
 
 class AsservCommander(BaseCommander):
@@ -107,216 +151,240 @@ class AsservCommander(BaseCommander):
 	def __init__(self, asserv: comm.robot.Asserv):
 		super(AsservCommander, self).__init__(asserv)
 
+	@cmd2.with_category("Asserv")
 	def do_pos(self, arg):
 		"""Returns the position of the Asserv Pico"""
 		dst,theta = self.pico.get_pos()
-		print(f"theta: {math.degrees(theta):.2f}° dst: {dst:.2f}mm")
+		self.poutput(f"theta: {math.degrees(theta):.2f}° dst: {dst:.2f}mm")
 
+	@cmd2.with_category("Asserv")
 	def do_posx(self, arg):
 		"""Returns the position of the Asserv Pico in X,Y"""
 		x,y = self.pico.get_pos_xy()
-		print(f"x,y: {x:.2f}, {y:.2f}mm")
+		self.poutput(f"x,y: {x:.2f}, {y:.2f}mm")
 
+	move_parser = cmd2.Cmd2ArgumentParser()
+	move_parser.add_argument('theta', type=float, help="Angle in degrees")
+	move_parser.add_argument('distance', type=float, help="Distance in mm")
+
+	@cmd2.with_argparser(move_parser)
+	@cmd2.with_category("Asserv")
 	def do_move(self, arg):
-		"""move (theta) (dst)"""
-		if not arg or len(arg.split()) != 2:
-			print("No thetha and distance")
-			return
-
+		"""Move the robot with polar coords"""
 		if not self.started:
-			print("Asserv not started")
+			self.poutput("Asserv not started")
 			return
 
-		theta, dst = map(float,arg.split())
+		theta, dst = arg.theta, arg.distance
 		theta = math.radians(theta)
 
-		print(f"Moving theta:{theta}rad and rho:{dst}mm")
+		self.poutput(f"Moving theta:{theta}rad and rho:{dst}mm")
 		self.pico.move(dst, theta)
 
+	@cmd2.with_category("Asserv Tuning")
 	def do_pids(self, arg):
 		"""list all pids"""
 		for pid in self.pico.pids.values():
-			print(pid)
+			self.poutput(pid)
 
+	def pid_choices(self):
+		return list(map(lambda x: x.name,self.pico.pids.values()))
+
+	gpid_parser = cmd2.Cmd2ArgumentParser()
+	gpid_parser.add_argument('pid', type=str, choices_provider=pid_choices, help="PID name/idx")
+
+	@cmd2.with_argparser(gpid_parser)
+	@cmd2.with_category("Asserv Tuning")
 	def do_gpid(self, arg):
-		"""gpid (id/nom pid)"""
-		if not arg:
-			print("Wrong arguments")
-			return
-
+		"""Get PID data"""
 		try:
-			idx = int(arg)
+			idx = int(arg.pid)
 			pid = self.pico.pid_from_idx(idx)
 		except Exception:
-			pid = self.pico.pid_from_name(arg)
+			pid = self.pico.pid_from_name(arg.pid)
 
 		if not pid:
-			print("Wrong PID")
+			self.poutput("Couldn't find PID")
 			return
 
 		self.pico.get_pid(pid)
-		print(pid)
+		self.poutput(pid)
 
+	spid_parser = cmd2.Cmd2ArgumentParser()
+	spid_parser.add_argument('pid', type=str, choices_provider=pid_choices, help="PID name/idx")
+	spid_parser.add_argument('kp', type=float, help="Kp coefficient")
+	spid_parser.add_argument('ki', type=float, help="Ki coefficient")
+	spid_parser.add_argument('kd', type=float, help="Kd coefficient")
+
+	@cmd2.with_argparser(spid_parser)
+	@cmd2.with_category("Asserv Tuning")
 	def do_spid(self, arg):
-		"""spid (id/nom pid) (kp) (ki) (kd)"""
-		arg = arg.split()
-		if not arg or len(arg) < 4:
-			print("Wrong arguments")
-			return
-
+		"""Set PID values"""
 		try:
-			idx = int(arg[0])
+			idx = int(arg.pid)
 			pid = self.pico.pid_from_idx(idx)
 		except Exception:
-			pid = self.pico.pid_from_name(arg[0])
+			pid = self.pico.pid_from_name(arg.pid)
 
 		if not pid:
-			print("Wrong PID")
+			self.poutput("Wrong PID")
 			return
 
-		kp, ki, kd = map(float, arg[1:])
-		pid.set(kp, ki, kd)
-		print(pid)
+		pid.set(arg.kp, arg.ki, arg.kd)
+		self.poutput(pid)
 		self.pico.set_pid(pid)
 
+	@cmd2.with_category("Asserv Tuning")
 	def do_gdsp(self, arg):
-		"""gets dst speed profile vmax and amax"""
+		"""Gets dst speed profile vmax and amax"""
 		vmax, amax = self.pico.get_dst_speedprofile()
 
-		print(f"vmax:{vmax}mm/s amax:{amax}mm/s²")
+		self.poutput(f"vmax:{vmax}mm/s amax:{amax}mm/s²")
 
+	@cmd2.with_category("Asserv Tuning")
 	def do_gasp(self, arg):
-		"""gets angle speed profile vmax and amax"""
+		"""Gets angle speed profile vmax and amax"""
 		vmax, amax = self.pico.get_angle_speedprofile()
 
-		print(f"vmax:{vmax}rad/s amax:{amax}rad/s²")
+		self.poutput(f"vmax:{vmax}rad/s amax:{amax}rad/s²")
 
+	sdsp_parser = cmd2.Cmd2ArgumentParser()
+	sdsp_parser.add_argument('vmax', type=float, help="Max velocity in mm/s")
+	sdsp_parser.add_argument('amax', type=float, help="Max acceleration in mm/s²")
+
+	@cmd2.with_argparser(sdsp_parser)
+	@cmd2.with_category("Asserv Tuning")
 	def do_sdsp(self, arg):
-		"""sdsp (vmax) (amax): sets dst speed profile"""
-		if not arg or len(arg.split()) != 2:
-			print("No vmax and amax")
-			return
+		"""Sets dst speed profile"""
+		self.pico.set_dst_speedprofile(arg.vmax, arg.amax)
 
-		vmax, amax = map(float,arg.split())
-		self.pico.set_dst_speedprofile(vmax, amax)
+	sasp_parser = cmd2.Cmd2ArgumentParser()
+	sasp_parser.add_argument('vmax', type=float, help="Max angular velocity in rad/s")
+	sasp_parser.add_argument('amax', type=float, help="Max angular acceleration in rad/s²")
 
+	@cmd2.with_argparser(sasp_parser)
+	@cmd2.with_category("Asserv Tuning")
 	def do_sasp(self, arg):
-		"""sasp (vmax) (amax): sets angle speed profile"""
-		if not arg or len(arg.split()) != 2:
-			print("No vmax and amax")
-			return
+		"""Sets angle speed profile"""
+		self.pico.set_angle_speedprofile(arg.vmax, arg.amax)
 
-		vmax, amax = map(float,arg.split())
-		self.pico.set_angle_speedprofile(vmax, amax)
-
+	@cmd2.with_category("Debug")
 	def do_denc(self, arg):
-		"""debug cmd: Gets encoder values"""
+		"""Gets encoder ticks"""
 		left, right = self.pico.debug_get_encoders()
 
-		print(f"Left: {left}, Right: {right}")
+		self.poutput(f"Left: {left}, Right: {right}")
 
+	dmot_parser = cmd2.Cmd2ArgumentParser()
+	dmot_parser.add_argument('left', type=float, help="Left motor value -1.0 - 1.0")
+	dmot_parser.add_argument('right', type=float, help="Right motor value -1.0 - 1.0")
+
+	@cmd2.with_argparser(dmot_parser)
+	@cmd2.with_category("Debug")
 	def do_dmot(self, arg):
-		"""debug cmd: dmot (leftval) (rightval)"""
-		if not arg or len(arg.split()) != 2:
-			print("No left and right values")
-			return
+		"""Set motor values"""
+		self.pico.debug_set_motors(arg.left, arg.right)
 
-		lval, rval = map(float,arg.split())
+	dmote_parser = cmd2.Cmd2ArgumentParser()
+	dmote_parser.add_argument('enabled', type=str2bool)
 
-		self.pico.debug_set_motors(lval, rval)
-
+	@cmd2.with_argparser(dmote_parser)
+	@cmd2.with_category("Debug")
 	def do_dmote(self, arg):
-		"""debug cmd: dmote (on/off), enables or disables the motor drivers"""
-		arg = str_to_bool(arg)
+		"""Enables or disables the motor drivers"""
+		self.pico.debug_set_motors_enable(arg.enabled)
 
-		if arg is None:
-			print("Wrong arguments")
-			return
-
-		self.pico.debug_set_motors_enable(arg)
-
+	@cmd2.with_category("Debug")
 	def do_dstate(self, arg):
-		"""debug cmd: dstate, returns the state of the controller"""
+		"""Returns the state of the controller"""
 		state = self.pico.debug_get_controller_state()
 		state = ["Reaching Theta", "Reaching Dst", "Reached target"][state]
-		print(f"State: {state}")
+		self.poutput(f"State: {state}")
 
+	@cmd2.with_category("Debug")
 	def do_dbg(self, arg):
-		"""debug cmd: dbg prints the debug info for each bg"""
+		"""Prints the debug info for each BG Driver"""
 		vel, curr, temp, vbus = self.pico.debug_get_left_bg_stats()
-		print(f"Left  BG: {vel:.2f}rad/s, {curr:.2f}A, {vbus:.2f}V, {temp:.2f}°C")
+		self.poutput(f"Left  BG: {vel:.2f}rad/s, {curr:.2f}A, {vbus:.2f}V, {temp:.2f}°C")
 		vel, curr, temp, vbus = self.pico.debug_get_right_bg_stats()
-		print(f"Right BG: {vel:.2f}rad/s, {curr:.2f}A, {vbus:.2f}V, {temp:.2f}°C")
+		self.poutput(f"Right BG: {vel:.2f}rad/s, {curr:.2f}A, {vbus:.2f}V, {temp:.2f}°C")
 
+	@cmd2.with_category("Asserv")
 	def do_estop(self, arg):
-		"""estop: sends an emergency stop"""
+		"""Sends an emergency stop"""
 		self.pico.emergency_stop()
 
+	movea_parser = cmd2.Cmd2ArgumentParser()
+	movea_parser.add_argument('x', type=float, help="X Coord of point to move to")
+	movea_parser.add_argument('y', type=float, help="Y Coord of point to move to")
+
+	@cmd2.with_argparser(movea_parser)
+	@cmd2.with_category("Asserv")
 	def do_movea(self, arg):
-		"""movea (x) (y): move to the absolute coords in a straight line"""
-
-		if not arg or len(arg.split()) != 2:
-			print("No x and y")
-			return
-
+		"""Move to the absolute coords in a straight line"""
 		if not self.started:
-			print("Asserv not started")
+			self.poutput("Asserv not started")
 			return
 
-		tx, ty = map(float,arg.split())
+		self.pico.move_abs(arg.x, arg.y)
 
-		self.pico.move_abs(tx, ty)
+	sq_parser = cmd2.Cmd2ArgumentParser()
+	sq_parser.add_argument('length', type=float, help="Side length of the square in mm")
 
+	@cmd2.with_argparser(sq_parser)
+	@cmd2.with_category("Asserv")
 	def do_sq(self, arg):
-		"""sq (side length)"""
-		try:
-			side_len = int(arg)
-		except Exception:
-			print("Wrong arguments")
-			return
-
+		"""Make a square"""
 		for i in range(4):
-			print(i)
-			self.pico.move(side_len, 0)
+			self.poutput(i)
+			self.pico.move(arg.length, 0)
 			#time.sleep(2)
 			self.pico.move(0, math.radians(90))
 			#time.sleep(2)
 
+	deff_parser = cmd2.Cmd2ArgumentParser()
+	deff_parser.add_argument('controlState', type=comm.robot.ControlState, default=comm.robot.ControlState.MANUAL, action=EnumAction, help="Control state of the effects")
+	deff_parser.add_argument('blinker', type=comm.robot.BlinkerState, default=comm.robot.BlinkerState.OFF, action=EnumAction, help="Blinker state")
+	deff_parser.add_argument('stop', type=str2bool, default=False, help="Stop light state")
+	deff_parser.add_argument('centerStop', type=str2bool, default=False, help="Center stop light on/off")
+	deff_parser.add_argument('headlight', type=comm.robot.HeadlightState, default=comm.robot.HeadlightState.OFF, action=EnumAction, help="Headlight state")
+	deff_parser.add_argument('ring', type=comm.robot.RingState, default=comm.robot.RingState.OFF, action=EnumAction, help="Ring light state")
+	deff_parser.add_argument('disco', type=str2bool, default=False, help="Disco mode toggle")
+	deff_parser.add_argument('reversing', type=str2bool, default=False, help="Reversing on/off")
+	deff_parser.add_argument('smoke', type=str2bool, default=False, help="Smoke on/off")
+
+	@cmd2.with_argparser(deff_parser)
+	@cmd2.with_category("Effects")
 	def do_deff(self, arg):
-		"""deff <controlState> <blinker> <stop> <center stop> <headlight> <ring> <disco> <reversing> <smoke>"""
-		if not arg or len(arg.split()) != 9:
-			print("No values")
-			return
-		args = arg.split()
-		cstate,blink,stop,cstop,hd,rs,disco,rev,smoke = comm.robot.ControlState(int(args[0])), comm.robot.BlinkerState(int(args[1])), str_to_bool(args[2]), str_to_bool(args[3]), comm.robot.HeadlightState(int(args[4])), comm.robot.RingState(int(args[5])), str_to_bool(args[6]), str_to_bool(args[7]), str_to_bool(args[8])
-		self.pico.debug_set_effects(cstate, blink, stop, cstop, hd, rs, disco, rev, smoke)
+		"""Control effects states	"""
+		self.pico.debug_set_effects(arg.controlState, arg.blinker, arg.stop, arg.centerStop, arg.headlight, arg.ring, arg.disco, arg.reversing, arg.smoke)
 
+	drgb_parser = cmd2.Cmd2ArgumentParser()
+	drgb_parser.add_argument('rgb', type=hex2int, help="RGB hex value")
+	drgb_parser.add_argument('brightness', type=int, default=255, help="Brightness value 0-255")
+
+	@cmd2.with_argparser(drgb_parser)
+	@cmd2.with_category("Effects")
 	def do_drgb(self, arg):
-		"""drgb <rgb> <bright>"""
-		if not arg or len(arg.split()) != 2:
-			print("No values")
-			return
-		asplit = arg.split()
-		try:
-			val = int(asplit[0], 16)
-			bright = int(asplit[1])
-		except Exception:
-			print("wrong value")
-			return
-		self.pico.debug_set_rgb(val, bright)
+		"""Sets all the LEDs to a single RGB value to debug"""
+		self.pico.debug_set_rgb(arg.rgb, arg.brightness)
 
+	@cmd2.with_category("Effects")
 	def do_dea(self, arg):
 		"""Go to effect auto"""
 		self.pico.debug_set_effects(comm.robot.ControlState.AUTOMATIC)
 
+	@cmd2.with_category("Effects")
 	def do_dem(self, arg):
 		"""Go to effect manual"""
 		self.pico.debug_set_effects(comm.robot.ControlState.MANUAL)
 
+	@cmd2.with_category("Effects")
 	def do_gay(self, arg):
 		"""Gay mode"""
 		self.pico.debug_set_effects(comm.robot.ControlState.GAY)
 
+	@cmd2.with_category("Effects")
 	def do_straight(self, arg):
 		"""Go back to normal auto mode"""
 		self.do_dea(arg)
@@ -328,167 +396,176 @@ class ActionCommander(BaseCommander):
 	def __init__(self, action: comm.robot.Action):
 		super(ActionCommander, self).__init__(action)
 
+	@cmd2.with_category("Actuators")
 	def do_demo(self, arg):
-		"""debug cmd: demo"""
+		"""Random demo time"""
 		self.pico.start()
 
 		self.pico.pump_enable(0, True)
-		print("pe")
+		self.poutput("pe")
 		time.sleep(1)
 		self.pico.pump_enable(0, False)
-		print("pd")
+		self.poutput("pd")
 
 		time.sleep(1)
 
 		self.pico.elev_home()
-		print("eh")
+		self.poutput("eh")
 		time.sleep(0.5)
 
 		self.pico.elev_move_abs(125)
-		print("emove")
+		self.poutput("emove")
 		time.sleep(0.5)
 
 		self.pico.elev_move_abs(65)
-		print("emove")
+		self.poutput("emove")
 		time.sleep(0.5)
 
 		self.pico.elev_move_abs(0)
-		print("emove")
+		self.poutput("emove")
 		time.sleep(0.5)
 
 		self.pico.elev_home()
-		print("eh")
+		self.poutput("eh")
 
 		time.sleep(1)
 
 		self.pico.right_arm_fold()
-		print("af")
+		self.poutput("af")
 		time.sleep(1)
 
 		self.pico.right_arm_deploy()
-		print("ad")
+		self.poutput("ad")
 		time.sleep(1)
 
 		self.pico.right_arm_turn(360)
-		print("at")
+		self.poutput("at")
 		time.sleep(0.5)
 		self.pico.right_arm_turn(-180)
-		print("at")
+		self.poutput("at")
 		time.sleep(0.5)
 
 		self.pico.right_arm_fold()
-		print("af")
+		self.poutput("af")
 
 		self.pico.stop()
 
+	@cmd2.with_category("Actuators: Elevator")
 	def do_ehomed(self, arg):
 		"""Is elevator homed ?"""
 		homed = self.pico.elev_homed()
-		print("Homed" if homed else "Not Homed")
+		self.poutput("Homed" if homed else "Not Homed")
 
+	@cmd2.with_category("Actuators: Elevator")
 	def do_epos(self, arg):
 		"""Position of elevator (in mm)"""
 		pos = self.pico.elev_pos()
-		print(f"pos:{pos}mm")
+		self.poutput(f"pos:{pos}mm")
 
+	@cmd2.with_category("Actuators: Elevator")
 	def do_ehome(self, arg):
 		"""Homes the elevator, needed before moving"""
 		self.pico.elev_home()
 
+	emove_parser = cmd2.Cmd2ArgumentParser()
+	emove_parser.add_argument('pos', type=float, help="Elevator pos in mm")
+
+	@cmd2.with_argparser(emove_parser)
+	@cmd2.with_category("Actuators: Elevator")
 	def do_emove(self, arg):
-		"""emove (pos): absolute position elevator move"""
-		try:
-			pos = float(arg)
-		except Exception:
-			print("Wrong arguments")
-			return
+		"""Absolute position elevator move"""
+		self.pico.elev_move_abs(arg.pos)
 
-		self.pico.elev_move_abs(pos)
+	emover_parser = cmd2.Cmd2ArgumentParser()
+	emover_parser.add_argument('dst', type=float, help="Relative move in mm")
 
+	@cmd2.with_argparser(emover_parser)
+	@cmd2.with_category("Actuators: Elevator")
 	def do_emover(self, arg):
-		"""emover (pos): relative position elevator move"""
-		try:
-			pos = float(arg)
-		except Exception:
-			print("Wrong arguments")
-			return
+		"""Relative position elevator move"""
+		self.pico.elev_move_rel(arg.dst)
 
-		self.pico.elev_move_rel(pos)
-
+	@cmd2.with_category("Actuators: Arms")
 	def do_ardeployed(self, arg):
 		"""Is right arm deployed ?"""
 		deployed = self.pico.right_arm_deployed()
-		print("Arm deployed" if deployed else "Arm not deployed (not necessarly folded)")
+		self.poutput("Arm deployed" if deployed else "Arm not deployed (not necessarly folded)")
 
+	@cmd2.with_category("Actuators: Arms")
 	def do_arangles(self, arg):
 		"""Get right arm angles, deployed and turn in degrees"""
 		dep, turn = self.pico.right_arm_angles()
-		print(f"deploy:{dep}deg, turn:{turn}deg")
+		self.poutput(f"deploy:{dep}deg, turn:{turn}deg")
 
+	@cmd2.with_category("Actuators: Arms")
 	def do_ardeploy(self, arg):
 		"""Deploys the right arm"""
 		self.pico.right_arm_deploy()
 
+	@cmd2.with_category("Actuators: Arms")
 	def do_arhdeploy(self, arg):
 		"""Half deploys the right arm"""
 		self.pico.right_arm_half_deploy()
 
+	@cmd2.with_category("Actuators: Arms")
 	def do_arfold(self, arg):
 		"""Folds the right arm in compact position"""
 		self.pico.right_arm_fold()
 
+	arturn_parser = cmd2.Cmd2ArgumentParser()
+	arturn_parser.add_argument('angle', type=float, help="Turn angle in deg")
+
+	@cmd2.with_argparser(arturn_parser)
+	@cmd2.with_category("Actuators: Arms")
 	def do_arturn(self, arg):
-		"""arturn: (angle): turn right arm head by angle"""
-		try:
-			angle = float(arg)
-		except Exception:
-			print("Wrong arguments")
-			return
+		"""Turn right arm head by angle"""
+		self.pico.right_arm_turn(arg.angle)
 
-		self.pico.right_arm_turn(angle)
-
+	@cmd2.with_category("Actuators: Arms")
 	def do_aldeployed(self, arg):
 		"""Is left arm deployed ?"""
 		deployed = self.pico.left_arm_deployed()
-		print("Arm deployed" if deployed else "Arm not deployed (not necessarly folded)")
+		self.poutput("Arm deployed" if deployed else "Arm not deployed (not necessarly folded)")
 
+	@cmd2.with_category("Actuators: Arms")
 	def do_alangles(self, arg):
 		"""Get left arm angles, deployed and turn in degrees"""
 		dep, turn = self.pico.left_arm_angles()
-		print(f"deploy:{dep}deg, turn:{turn}deg")
+		self.poutput(f"deploy:{dep}deg, turn:{turn}deg")
 
+	@cmd2.with_category("Actuators: Arms")
 	def do_aldeploy(self, arg):
 		"""Deploys the left arm"""
 		self.pico.left_arm_deploy()
 
+	@cmd2.with_category("Actuators: Arms")
 	def do_alhdeploy(self, arg):
 		"""Half deploys the left arm"""
 		self.pico.left_arm_half_deploy()
 
+	@cmd2.with_category("Actuators: Arms")
 	def do_alfold(self, arg):
 		"""Folds the left arm in compact position"""
 		self.pico.left_arm_fold()
 
+	alturn_parser = cmd2.Cmd2ArgumentParser()
+	alturn_parser.add_argument('angle', type=float, help="Turn angle in deg")
+
+	@cmd2.with_argparser(alturn_parser)
+	@cmd2.with_category("Actuators: Arms")
 	def do_alturn(self, arg):
-		"""alturn: (angle): turn left arm head by angle"""
-		try:
-			angle = float(arg)
-		except Exception:
-			print("Wrong arguments")
-			return
+		"""Turn left arm head by angle"""
+		self.pico.left_arm_turn(arg.angle)
 
-		self.pico.left_arm_turn(angle)
+	pump_parser = cmd2.Cmd2ArgumentParser()
+	pump_parser.add_argument('idx', type=int, help="Pump index")
+	pump_parser.add_argument('state', type=str2bool, help="Pump state")
 
+	@cmd2.with_argparser(pump_parser)
+	@cmd2.with_category("Actuators: Succ")
 	def do_pump(self, arg):
-		try:
-			sp = arg.split(" ")
-			idx = int(sp[0])
-			state = {"on":True,"off":False}[sp[1]]
-		except Exception:
-			print("Wrong arguments")
-			return
-
-		self.pico.pump_enable(idx, state)
+		"""Sets the pump state"""
+		self.pico.pump_enable(arg.idx, arg.state)
 
 
 if __name__ == "__main__":
@@ -504,12 +581,14 @@ if __name__ == "__main__":
 	action = None
 	asserv = None
 
+	print("Connecting to Pico...")
 	if args.action:
 		action = comm.make_action()
 		commander = ActionCommander(action)
 	else:
 		asserv = comm.make_asserv()
 		commander = AsservCommander(asserv)
+	print("Connected")
 
 	if args.debug:
 		scr_handler = handlers.DisplayHandler(action=action, asserv=asserv, debug=True, thread=True)

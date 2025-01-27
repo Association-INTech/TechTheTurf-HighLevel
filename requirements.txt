@@ -25,3 +25,6 @@ rplcd
 
 # HC-SR04 Pami
 hcsr04sensor
+
+# Commander
+cmd2

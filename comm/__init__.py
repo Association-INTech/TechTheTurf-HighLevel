@@ -6,6 +6,7 @@ NO_SMBUS = False
 try:
 	import smbus2
 except Exception:
+	print("Running without SMBUS")
 	NO_SMBUS = True
 
 # Definition of Picos
