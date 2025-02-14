@@ -192,7 +192,10 @@ class PicoBase(I2CBase):
 		self.set_running(False)
 
 	def set_telem(self, telem, state):
-		self.write_struct(6 | (telem.idx << 4), "?", state)
+		self.write_struct(6 | ((1 if state else 0) << 4), "B", telem.idx)
+
+	def set_telem_downsample(self, telem, downsample):
+		self.write_struct(6 | (2 << 4), "BB", telem.idx, downsample)
 
 	# Read registers
 
@@ -359,6 +362,9 @@ class Asserv(PicoBase):
 
 	def debug_set_rgb(self, rgb: int, brightness: int):
 		self.write_struct(11 | (8 << 4), "IB", rgb, brightness)
+
+	def debug_set_popup(self, left: float, right: float):
+		self.write_struct(11 | (9 << 4), "ff", left, right)
 
 # Class for the pico that handles actuators
 

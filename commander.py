@@ -119,12 +119,37 @@ class BaseCommander(cmd2.Cmd):
 			telem = self.pico.telem_from_idx(idx)
 		except Exception:
 			telem = self.pico.telem_from_name(arg.telem)
-		self.poutput(arg.enabled)
+
 		if not telem:
 			self.poutput("Couldn't find the telemetry")
 			return
 
 		self.pico.set_telem(telem, arg.enabled)
+
+	stelemd_parser = cmd2.Cmd2ArgumentParser()
+	stelemd_parser.add_argument('telem', type=str, choices_provider=telem_choices, help="Index/name of telemetry or 'all'")
+	stelemd_parser.add_argument('downsample', type=int)
+
+	@cmd2.with_argparser(stelemd_parser)
+	@cmd2.with_category("Telemetry")
+	def do_stelemd(self, arg):
+		"""Changes the downsampling of the selected telemetry"""
+		if arg.telem == "all":
+			for telem in self.pico.telems.values():
+				self.pico.set_telem_downsample(telem, arg.downsample)
+			return
+
+		try:
+			idx = int(arg.telem)
+			telem = self.pico.telem_from_idx(idx)
+		except Exception:
+			telem = self.pico.telem_from_name(arg.telem)
+
+		if not telem:
+			self.poutput("Couldn't find the telemetry")
+			return
+
+		self.pico.set_telem_downsample(telem, arg.downsample)
 
 	@cmd2.with_category("Debug")
 	def do_ready(self, arg):
@@ -388,6 +413,16 @@ class AsservCommander(BaseCommander):
 	def do_straight(self, arg):
 		"""Go back to normal auto mode"""
 		self.do_dea(arg)
+
+	dpu_parser = cmd2.Cmd2ArgumentParser()
+	dpu_parser.add_argument('left', type=float, help="Left servo value -1 to 1")
+	dpu_parser.add_argument('right', type=float, help="Right servo value -1 to 1")
+
+	@cmd2.with_argparser(dpu_parser)
+	@cmd2.with_category("Effects")
+	def do_dpu(self, arg):
+		"""Set raw values of servos for the pop up headlights"""
+		self.pico.debug_set_popup(arg.left, arg.right)
 
 
 class ActionCommander(BaseCommander):
