@@ -32,6 +32,18 @@ class PidTelemetryPacket(TelemetryPacketBase):
 		return "fff"
 
 @dataclass
+class PowerTelemetryPacket(TelemetryPacketBase):
+	voltage: float
+	current: float
+	power: float
+
+	@staticmethod
+	def fmt():
+		return "fff"
+
+TELEMETRY_TYPES = {0: PidTelemetryPacket, 1: PowerTelemetryPacket}
+
+@dataclass
 class Telemetry:
 	name: str
 	idx: int

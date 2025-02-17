@@ -248,6 +248,7 @@ class Asserv(PicoBase):
 			idx = pid.idx
 			self.pids[idx] = pid
 			self.telems[idx] = telemetry.Telemetry(f"pid_{pid.name}", idx, telemetry.PidTelemetryPacket)
+		self.telems[4] = telemetry.Telemetry("power", 4, telemetry.PowerTelemetryPacket)
 
 		for telem in self.telems.values():
 			self.set_telem(telem, False)
@@ -327,6 +328,9 @@ class Asserv(PicoBase):
 
 	def get_angle_speedprofile(self):
 		return self.read_struct(12 | (1 << 4), "ff")
+
+	def get_battery_stats(self):
+		return self.read_struct(14 | (0 << 4), "ffff")
 
 	# Read/Write
 

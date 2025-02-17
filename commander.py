@@ -424,6 +424,13 @@ class AsservCommander(BaseCommander):
 		"""Set raw values of servos for the pop up headlights"""
 		self.pico.debug_set_popup(arg.left, arg.right)
 
+	@cmd2.with_category("Extra")
+	def do_pow(self, arg):
+		"""Get power information (only available on robots that have a current sensor)"""
+		voltage,current,power,battper = self.pico.get_battery_stats()
+		print(f"Battery: {battper:.2f} % at: {voltage:.2f} V")
+		print(f"Using: {current*1e3:.2f} mA => {power:.2f} W")
+
 
 class ActionCommander(BaseCommander):
 	pico: comm.robot.Action
