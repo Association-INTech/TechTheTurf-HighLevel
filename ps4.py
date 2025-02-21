@@ -71,11 +71,12 @@ else:
 	speed_accel_lim = 1000 # mm^2/s
 
 # Gamepad setup
-gamepadType = pad.PS4
+#gamepadType = pad.PS4
+gamepadType = pad.VaderXinput
 btnDeploy = "CROSS"
 btnLeftArm = "L1"
 btnRightArm = "R1"
-btnExit = "PS"
+btnExit = "OPTIONS"
 joySpeed = "LEFT-Y"
 joyTurn = "RIGHT-X"
 joyTurbo = "R2"
@@ -86,6 +87,7 @@ btnWarning = "TRIANGLE"
 btnHeadlights = "SQUARE"
 btnPro = "CIRCLE"
 btnSmoke = "R3"
+btnPopUp = "L3"
 
 # State variables
 dstVel = LimitedValue(speed_accel_lim)
@@ -106,12 +108,12 @@ if not pad.available():
 gamepad = gamepadType()
 print("Gamepad connected")
 
-asserv.start()
-asserv.wait_completed()
+#asserv.start()
+#asserv.wait_completed()
 
-time.sleep(1)
+#time.sleep(1)
 
-print("Asserv started")
+#print("Asserv started")
 
 if ACTION_ENABLED:
 	action.start()
@@ -144,7 +146,7 @@ def trigger(val):
 	return (val+1.0)/2.0
 
 state = True
-proMode = False
+proMode = True
 
 asserv.debug_set_motors_enable(True)
 
@@ -156,6 +158,7 @@ try:
 	headlightState = comm.robot.HeadlightState.OFF
 	ringState = comm.robot.RingState.OFF
 	smoking = False
+	popAdjust = False
 	while gamepad.isConnected():
 		dt = end-st
 		st = time.time()
@@ -213,6 +216,10 @@ try:
 						action.right_arm_fold()
 					rightArmState = False
 
+		if gamepad.beenPressed(btnPopUp):
+			popAdjust = not popAdjust
+			print(f"PopAdj: {popAdjust}")
+
 		speed = -deadzone(gamepad.axis(joySpeed))
 		turn = -deadzone(gamepad.axis(joyTurn))
 		turbo = trigger(gamepad.axis(joyTurbo))
@@ -220,8 +227,11 @@ try:
 		armLeftTurn = deadzone(gamepad.axis(joyArmLeftTurn))
 		armRightTurn = deadzone(gamepad.axis(joyArmRightTurn))
 
-		move_spd_adj = move_speed + turbo_speed_add*turbo - prec_speed_remove*slow
-		turn_spd_adj = turn_speed - prec_turn_remove*slow
+		move_spd_adj = move_speed
+		turn_spd_adj = turn_speed
+		if not popAdjust:
+			move_spd_adj += turbo_speed_add*turbo - prec_speed_remove*slow
+			turn_spd_adj -= prec_turn_remove*slow
 
 		dstVelVal = dstVel.apply(move_spd_adj*speed,dt)
 		stopping = abs(dstVelVal) > 0 and speed == 0
@@ -283,10 +293,18 @@ try:
 			if gamepad.beenPressed(btnSmoke):
 				smoking = not smoking
 
+			leftPop = 1 if headlightState != comm.robot.HeadlightState.OFF else 0
+			rightPop = 1 if headlightState != comm.robot.HeadlightState.OFF else 0
+
+			if popAdjust:
+				fact = 1 if headlightState == comm.robot.HeadlightState.OFF else -1
+				leftPop += slow*fact
+				rightPop += turbo*fact
+
 			lastArmRightTurn = armRightTurn
 			lastArmLeftTurn = armLeftTurn
 
-			asserv.debug_set_effects(controlState, blinkState, stopping, True, headlightState, ringState, False, reversing, smoking)
+			asserv.debug_set_effects(controlState, blinkState, stopping, True, headlightState, ringState, False, reversing, smoking, leftPop, rightPop)
 		time.sleep(1.0/UPDATE_FREQ)
 		end = time.time()
 

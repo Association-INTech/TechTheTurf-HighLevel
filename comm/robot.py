@@ -232,6 +232,8 @@ class RingState(Enum):
 	SPEED = 2
 	CHASE = 3
 	WIPER = 4
+	POLICE = 5
+	BATTERY = 6
 
 # Class for the pico that handles moving
 
@@ -336,7 +338,7 @@ class Asserv(PicoBase):
 
 	# returns left,right ticks
 	def debug_get_encoders(self):
-		return self.read_struct(11 | (0 << 4), "ii")
+		return self.read_struct(11 | (0 << 4), "iiii")
 
 	# sets motor speed values manually
 	def debug_set_motors(self, left, right):
@@ -359,13 +361,14 @@ class Asserv(PicoBase):
 		return self.read_struct(11 | (6 << 4), "ffff")
 
 	def debug_set_effects(self, control: ControlState, blinker: BlinkerState = BlinkerState.OFF, stop: bool = False, 
-		center_stop: bool = False, headlight: HeadlightState = HeadlightState.OFF, ring: RingState = RingState.OFF, disco: bool = False, rev: bool = False, smoke: bool = False):
+		center_stop: bool = False, headlight: HeadlightState = HeadlightState.OFF, ring: RingState = RingState.OFF, disco: bool = False, rev: bool = False, smoke: bool = False,
+		pop_left: float = 0, pop_right: float = 0):
 
 		boules = bool(stop) | (bool(center_stop) << 1) | (bool(disco) << 2) | (bool(rev) << 3) | (bool(smoke) << 4)
-		self.write_struct(11 | (7 << 4), "BBBBB", boules, control.value, blinker.value, headlight.value, ring.value)
+		self.write_struct(11 | (7 << 4), "BBBBBff", boules, control.value, blinker.value, headlight.value, ring.value, pop_left, pop_right)
 
-	def debug_set_rgb(self, rgb: int, brightness: int):
-		self.write_struct(11 | (8 << 4), "IB", rgb, brightness)
+	def debug_set_rgb(self, rgb: int, brightness: int, idx: int = 0xFFFFFFFF):
+		self.write_struct(11 | (8 << 4), "IIB", rgb, idx, brightness)
 
 	def debug_set_popup(self, left: float, right: float):
 		self.write_struct(11 | (9 << 4), "ff", left, right)

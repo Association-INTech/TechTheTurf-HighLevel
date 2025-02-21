@@ -122,6 +122,38 @@ class PS4(Gamepad):
         }
         self._setupReverseMaps()
 
+
+class VaderXinput(Gamepad):
+    fullName = 'Vader 4 Pro Xinput'
+
+    def __init__(self, joystickNumber = 0):
+        Gamepad.__init__(self, joystickNumber)
+        self.axisNames = {
+            0: 'LEFT-X',
+            1: 'LEFT-Y',
+            2: 'L2',
+            3: 'RIGHT-X',
+            4: 'RIGHT-Y',
+            5: 'R2',
+            6: 'DPAD-X',
+            7: 'DPAD-Y'
+        }
+        self.buttonNames = {
+            0:  'CROSS',
+            1:  'CIRCLE',
+            2:  'TRIANGLE',
+            3:  'SQUARE',
+            4:  'L1',
+            5:  'R1',
+            6:  'SHARE',
+            7:  'OPTIONS',
+            8:  'L3',
+            9:  'R3',
+        }
+        self._setupReverseMaps()
+
+
+
 class RandomPad(Gamepad):
     fullName = 'Random ass fucking garbage gamepad'
 
@@ -152,7 +184,6 @@ class RandomPad(Gamepad):
             14: 'R3'
         }
         self._setupReverseMaps()
-
 
 # PS4 controller settings for older Raspbian versions
 #class PS4(Gamepad):

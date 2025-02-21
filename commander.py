@@ -296,9 +296,10 @@ class AsservCommander(BaseCommander):
 	@cmd2.with_category("Debug")
 	def do_denc(self, arg):
 		"""Gets encoder ticks"""
-		left, right = self.pico.debug_get_encoders()
+		left, right, leftSpd, rightSpd = self.pico.debug_get_encoders()
 
 		self.poutput(f"Left: {left}, Right: {right}")
+		self.poutput(f"Left Spd: {leftSpd}, Right Spd: {rightSpd}")
 
 	dmot_parser = cmd2.Cmd2ArgumentParser()
 	dmot_parser.add_argument('left', type=float, help="Left motor value -1.0 - 1.0")
@@ -369,30 +370,34 @@ class AsservCommander(BaseCommander):
 
 	deff_parser = cmd2.Cmd2ArgumentParser()
 	deff_parser.add_argument('controlState', type=comm.robot.ControlState, default=comm.robot.ControlState.MANUAL, action=EnumAction, help="Control state of the effects")
-	deff_parser.add_argument('blinker', type=comm.robot.BlinkerState, default=comm.robot.BlinkerState.OFF, action=EnumAction, help="Blinker state")
-	deff_parser.add_argument('stop', type=str2bool, default=False, help="Stop light state")
-	deff_parser.add_argument('centerStop', type=str2bool, default=False, help="Center stop light on/off")
-	deff_parser.add_argument('headlight', type=comm.robot.HeadlightState, default=comm.robot.HeadlightState.OFF, action=EnumAction, help="Headlight state")
-	deff_parser.add_argument('ring', type=comm.robot.RingState, default=comm.robot.RingState.OFF, action=EnumAction, help="Ring light state")
-	deff_parser.add_argument('disco', type=str2bool, default=False, help="Disco mode toggle")
-	deff_parser.add_argument('reversing', type=str2bool, default=False, help="Reversing on/off")
-	deff_parser.add_argument('smoke', type=str2bool, default=False, help="Smoke on/off")
+	deff_parser.add_argument('blinker', nargs='?', type=comm.robot.BlinkerState, default="off", action=EnumAction, help="Blinker state")
+	deff_parser.add_argument('stop', nargs='?', type=str2bool, default=False, help="Stop light state")
+	deff_parser.add_argument('centerStop', nargs='?', type=str2bool, default=False, help="Center stop light on/off")
+	deff_parser.add_argument('headlight', nargs='?', type=comm.robot.HeadlightState, default="off", action=EnumAction, help="Headlight state")
+	deff_parser.add_argument('ring', nargs='?', type=comm.robot.RingState, default="off", action=EnumAction, help="Ring light state")
+	deff_parser.add_argument('disco', nargs='?', type=str2bool, default=False, help="Disco mode toggle")
+	deff_parser.add_argument('reversing', nargs='?', type=str2bool, default=False, help="Reversing on/off")
+	deff_parser.add_argument('smoke', nargs='?', type=str2bool, default=False, help="Smoke on/off")
+	deff_parser.add_argument('leftPop', nargs='?', type=float, default=0, help="Left PopUp")
+	deff_parser.add_argument('rightPop', nargs='?', type=float, default=0, help="Right PopUp")
 
 	@cmd2.with_argparser(deff_parser)
 	@cmd2.with_category("Effects")
 	def do_deff(self, arg):
 		"""Control effects states	"""
-		self.pico.debug_set_effects(arg.controlState, arg.blinker, arg.stop, arg.centerStop, arg.headlight, arg.ring, arg.disco, arg.reversing, arg.smoke)
+		self.pico.debug_set_effects(arg.controlState, arg.blinker, arg.stop, arg.centerStop, arg.headlight, arg.ring, arg.disco, arg.reversing, arg.smoke,
+			arg.leftPop, arg.rightPop)
 
 	drgb_parser = cmd2.Cmd2ArgumentParser()
 	drgb_parser.add_argument('rgb', type=hex2int, help="RGB hex value")
 	drgb_parser.add_argument('brightness', type=int, default=255, help="Brightness value 0-255")
+	drgb_parser.add_argument('idx', type=int, default=0xFFFFFFFF, nargs='?', help="LED Index if needed")
 
 	@cmd2.with_argparser(drgb_parser)
 	@cmd2.with_category("Effects")
 	def do_drgb(self, arg):
-		"""Sets all the LEDs to a single RGB value to debug"""
-		self.pico.debug_set_rgb(arg.rgb, arg.brightness)
+		"""Sets all the LEDs or a singlar LED to a single RGB value to debug"""
+		self.pico.debug_set_rgb(arg.rgb, arg.brightness, arg.idx)
 
 	@cmd2.with_category("Effects")
 	def do_dea(self, arg):
