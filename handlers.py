@@ -13,6 +13,12 @@ try:
 except Exception:
 	# Running on main
 	pass
+try:
+	import busio
+	import adafruit_vl53l1x
+except Exception:
+	# Running on main
+	pass
 
 import metacom.mqtt as mqtt
 
@@ -34,11 +40,19 @@ ARM_OFFSET_TO_FRONT = 135.5
 HCSR04_OFFSET_TO_ENCODER = -50
 PAMINABLE_ENCODER_OFFSET_TO_FRONT = 90
 
+# Pamini constants
+PAMINI_TOF_OFFSET_TO_ENCODER = 102
+PAMINI_ENCODER_OFFSET_TO_FRONT = 90
+
 # Electrical constants
 JUMPER_PIN = 22
 # Paminable
 HCSR04_TRIG = 23
 HCSR04_ECHO = 24
+# Pamini
+PAMINI_TOF_SCL = 1
+PAMINI_TOF_SDA = 0
+PAMINI_WIDTH = 138
 
 LCD_ADDR = 0x3f
 LCD_COLS = 20
@@ -47,28 +61,29 @@ LCD_ROWS = 4
 GPIO.setmode(GPIO.BCM)
 
 class JumperStart:
-	def __init__(self, pin=JUMPER_PIN, safe=False):
+	def __init__(self, pin=JUMPER_PIN, safe=False, inversed=False):
 		self.pin = pin
 		self.safe = safe
+		self.inversed = inversed
 
 		# Jumper in input Pull-Up
 		GPIO.setup(pin, GPIO.IN, GPIO.PUD_UP)
 
 	def state(self):
-		return not GPIO.input(self.pin)
+		return (not GPIO.input(self.pin)) ^ self.inversed
 
 	def wait(self):
-		if self.safe and GPIO.input(self.pin):
+		if self.safe and not self.state():
 			print("Waiting for jumper to be inserted...")
 
-			while GPIO.input(self.pin):
+			while not self.state():
 				time.sleep(0.01)
 
 			time.sleep(1)
 
 		print("Waiting for start...")
 
-		while not GPIO.input(self.pin):
+		while self.state():
 			time.sleep(0.01)
 
 		print("Starting")
@@ -314,6 +329,60 @@ class HCSR04Handler:
 		self.thread.join()
 		self.thread = None
 
+class TOFHandler:
+	def __init__(self, i2c_scl, i2c_sda, width, length, max_dst, margin, pos_func, detected_func, cleared_func=None, dir=1):
+		self.bus = busio.I2C(i2c_scl, i2c_sda)
+		self.sensor = adafruit_vl53l1x.VL53L1X(self.bus)
+		self.max_dst = max_dst
+		self.pos_func = pos_func
+		self.detected_func = detected_func
+		self.cleared_func = cleared_func
+		self.width = width
+		self.length = length
+		self.margin = margin
+		self.dir = dir
+
+	def thread_func(self):
+		has_detected = False
+		while self.alive:
+			try:
+				while not self.bus.data_ready:
+					continue
+			except Exception:
+				pass
+			x,y,theta = self.pos_func()
+			#print(x,y,theta)
+			while True:
+				try:
+					dst = self.dir*self.sensor.distance*10.0
+					self.sensor.clear_interrupt()
+					break
+				except Exception:
+					pass
+			px = x + dst*np.cos(theta)
+			py = y + dst*np.sin(theta)
+
+			if px < self.margin or px > self.length-self.margin or py < self.margin or py > self.width-self.margin or abs(dst) >= self.max_dst:
+				if has_detected and self.cleared_func is not None:
+					self.cleared_func()
+				has_detected = False
+				continue
+
+			self.detected_func(dst, theta, px, py)
+			has_detected = True
+
+	def start(self):
+		self.sensor.start_ranging()
+		self.alive = True
+		self.thread = threading.Thread(target=self.thread_func, daemon=True)
+		self.thread.start()
+
+	def stop(self):
+		self.alive = False
+		self.thread.join()
+		self.thread = None
+		self.sensor.stop_ranging()
+
 def inst(func):
 	def inner(self, *args, **kwargs):
 		# Call the function normally
@@ -407,6 +476,7 @@ class BaseScenario:
 
 	def obs_cleared(self):
 		if self.started and self.obs_restart:
+			print("Obs clr")
 			self.asserv.notify_stop_clear()
 
 	def run(self):
@@ -523,3 +593,19 @@ class PaminableScenario(BaseScenario):
 
 		if self.mcom is not None:
 			self.start_info.attends()
+
+class PaminiScenario(BaseScenario):
+	def __init__(self, asserv, start_x, start_y, start_theta, inst_wait=0, tof_enable=True, tof_restart=False, tof_radius=300, tof_margin=10, ip_nuc=None, jumper_safe=False):
+		super().__init__(asserv, start_x, start_y, start_theta, inst_wait, ip_nuc, mqtt.Pamini, tof_restart)
+
+		self.jumper = JumperStart(safe=jumper_safe)
+		self.tof = TOFHandler(PAMINI_TOF_SCL, PAMINI_TOF_SDA, TABLE_WIDTH, TABLE_LENGTH, tof_radius, tof_margin, lambda: self.get_pos(PAMINI_TOF_OFFSET_TO_ENCODER),
+								self.obs_detect, self.obs_cleared, -1) if tof_enable else None
+
+	def startup(self):
+		super().startup()
+		if self.tof is not None:
+			print("Starting TOF...")
+			self.tof.start()
+
+		self.jumper.wait()

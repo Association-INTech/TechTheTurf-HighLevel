@@ -59,7 +59,7 @@ class BaseCommander(cmd2.Cmd):
 	def __init__(self, pico: comm.robot.PicoBase):
 		shortcuts = dict(cmd2.DEFAULT_SHORTCUTS)
 		shortcuts.update({'exit': 'quit'})
-		super(BaseCommander, self).__init__()
+		super(BaseCommander, self).__init__(include_py=True)
 		self.pico = pico
 		self.started = False
 
@@ -428,6 +428,14 @@ class AsservCommander(BaseCommander):
 	def do_dpu(self, arg):
 		"""Set raw values of servos for the pop up headlights"""
 		self.pico.debug_set_popup(arg.left, arg.right)
+
+	@cmd2.with_category("Effects")
+	def do_dldr(self, arg):
+		"""Get LDR Lux values"""
+		ext,front = self.pico.debug_get_ldrs()
+		print(f"Ext  : {ext:.2f} Lux")
+		print(f"Front: {front:.2f} Lux")
+
 
 	@cmd2.with_category("Extra")
 	def do_pow(self, arg):

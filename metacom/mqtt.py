@@ -135,6 +135,10 @@ class Paminable(Utilisateur):
 	def __init__(self, ip_serveur_mqtt="127.0.0.1", objets_sujets=[], f_rappel=None):
 		super().__init__("PAMINABLE", "pouussinng", ip_serveur_mqtt, objets_sujets, f_rappel)
 
+class Pamini(Utilisateur):
+	def __init__(self, ip_serveur_mqtt="127.0.0.1", objets_sujets=[], f_rappel=None):
+		super().__init__("PAMINI", "branlette", ip_serveur_mqtt, objets_sujets, f_rappel)
+
 if __name__ == "__main__":
 	import argparse
 	

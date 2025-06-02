@@ -71,8 +71,8 @@ else:
 	speed_accel_lim = 1000 # mm^2/s
 
 # Gamepad setup
-#gamepadType = pad.PS4
-gamepadType = pad.VaderXinput
+gamepadType = pad.PS4
+#gamepadType = pad.VaderXinput
 btnDeploy = "CROSS"
 btnLeftArm = "L1"
 btnRightArm = "R1"
@@ -165,10 +165,11 @@ try:
 
 		if gamepad.beenPressed(btnExit):
 			state = not state
-			proMode = False
-			for i in range(50):
-				asserv.debug_set_motors_enable(False)
-			asserv.set_running(state)
+			if proMode:
+				for i in range(50):
+					asserv.debug_set_motors_enable(state)
+			else:
+				asserv.set_running(state)
 			dst = 0
 			theta = 0
 			dstVel.reset()

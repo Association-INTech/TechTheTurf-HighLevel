@@ -225,6 +225,8 @@ class ControlState(Enum):
 	AUTOMATIC = 1
 	MANUAL = 2
 	GAY = 3
+	POLICE = 4
+	SHOW = 5
 
 class RingState(Enum):
 	OFF = 0
@@ -232,8 +234,7 @@ class RingState(Enum):
 	SPEED = 2
 	CHASE = 3
 	WIPER = 4
-	POLICE = 5
-	BATTERY = 6
+	BATTERY = 5
 
 # Class for the pico that handles moving
 
@@ -372,6 +373,9 @@ class Asserv(PicoBase):
 
 	def debug_set_popup(self, left: float, right: float):
 		self.write_struct(11 | (9 << 4), "ff", left, right)
+
+	def debug_get_ldrs(self):
+		return self.read_struct(11 | (10 << 4), "ff")
 
 # Class for the pico that handles actuators
 
